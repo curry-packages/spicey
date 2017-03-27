@@ -1,0 +1,23 @@
+{
+    "name": "spicey",
+    "version": "1.0.0",
+    "author": "Michael Hanus <mh@informatik.uni-kiel.de>",
+    "synopsis": "A web application framework for Curry",
+    "category": [ "Web", "Database" ],
+    "dependencies": {
+        "ertools": ">= 1.0.0"
+    },
+    "configModule": "Spicey.PackageConfig",
+    "executable": {
+        "name": "spiceup",
+        "main": "Spicey.SpiceUp"
+    },
+    "testsuite": {
+        "src-dir": "examples",
+        "modules": [ "TestSpicey" ]
+    },
+    "source": {
+        "git": "https://git.ps.informatik.uni-kiel.de/curry-packages/spicey.git",
+        "tag": "$version"
+    }
+}
