@@ -36,6 +36,7 @@ lastId = global (0, 0) (Persistent sessionCookieName)
 
 --- The abstract type to represent session identifiers.
 data SessionId = SessionId String
+ deriving Eq
 
 getId :: SessionId -> String
 getId (SessionId i) = i

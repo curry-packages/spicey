@@ -1,15 +1,15 @@
 {
     "name": "spicey",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "author": "Michael Hanus <mh@informatik.uni-kiel.de>",
     "synopsis": "A web application framework for Curry",
     "category": [ "Web", "Database" ],
     "dependencies": {
-        "ertools": ">= 1.0.0"
+        "ertools": ">= 2.0.0"
     },
     "compilerCompatibility": {
-        "pakcs": ">= 1.14.0, < 2.0.0",
-        "kics2": ">= 0.5.0, < 2.0.0"
+        "pakcs": ">= 2.0.0",
+        "kics2": ">= 2.0.0"
     },
     "configModule": "Spicey.PackageConfig",
     "executable": {

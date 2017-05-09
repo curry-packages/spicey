@@ -15,11 +15,12 @@ import Spicey.Scaffolding
 systemBanner :: String
 systemBanner =
   let bannerText = "Spicey Web Framework (Version " ++ packageVersion ++
-                   " of 12/03/17)"
+                   " of 09/05/17)"
       bannerLine = take (length bannerText) (repeat '-')
    in bannerLine ++ "\n" ++ bannerText ++ "\n" ++ bannerLine
 
 data FileMode = Exec | NoExec
+ deriving Eq
 
 setFileMode :: FileMode -> String -> IO ()
 setFileMode fmode filename =

@@ -11,13 +11,13 @@ import Spicey.GenerationHelper
 generateRoutesForERD :: ERD -> CurryProg
 generateRoutesForERD (ERD _ entities _) =
  let spiceySysCtrl = "SpiceySystemController" in
- CurryProg
+ simpleCurryProg
   mappingModuleName
   (["Spicey", "Routes", spiceySysCtrl, dataModuleName] ++
    (map (\e -> controllerModuleName (entityName e)) entities)) -- imports
   [] -- typedecls
   [
-    cmtfunc 
+    stCmtFunc 
       ("Maps the controllers associated to URLs in module RoutesData\n"++
        "into the actual controller operations.")
       (mappingModuleName, "getController")
@@ -49,18 +49,18 @@ branchesForEntity (Entity entityName _) =
               (constF (controllerReference, "main"++controllerReference))
   
 generateStartpointDataForERD :: ERD -> CurryProg
-generateStartpointDataForERD (ERD _ entities _) = CurryProg
+generateStartpointDataForERD (ERD _ entities _) = simpleCurryProg
   dataModuleName
   ["Authentication"] -- imports
   [
     CType (dataModuleName, "ControllerReference") Public []
-          ([CCons (dataModuleName, "ProcessListController") Public [],
-            CCons (dataModuleName, "LoginController") Public []] ++
-           map controllerReferencesForEntity entities),
+          ([simpleCCons (dataModuleName, "ProcessListController") Public [],
+            simpleCCons (dataModuleName, "LoginController") Public []] ++
+           map controllerReferencesForEntity entities) [],
     urlMatchType,
     routeType
   ] -- typedecls
-  [cmtfunc 
+  [stCmtFunc 
      ("This constant specifies the association of URLs to controllers.\n"++
       "Controllers are identified here by constants of type\n"++
       "ControllerReference. The actual mapping of these constants\n"++
@@ -124,11 +124,11 @@ generateStartpointDataForERD (ERD _ entities _) = CurryProg
   urlMatchType :: CTypeDecl
   urlMatchType =
     CType (dataModuleName, "UrlMatch") Public [] [
-      CCons (dataModuleName, "Exact")   Public [stringType],
-      CCons (dataModuleName, "Prefix")  Public [stringType,stringType],
-      CCons (dataModuleName, "Matcher") Public [stringType ~> boolType],
-      CCons (dataModuleName, "Always")  Public []
-    ]
+      simpleCCons (dataModuleName, "Exact")   Public [stringType],
+      simpleCCons (dataModuleName, "Prefix")  Public [stringType,stringType],
+      simpleCCons (dataModuleName, "Matcher") Public [stringType ~> boolType],
+      simpleCCons (dataModuleName, "Always")  Public []
+    ] []
     
   routeMappingType :: CTypeExpr
   routeMappingType = listType (baseType (dataModuleName,"Route"))
@@ -142,4 +142,4 @@ generateStartpointDataForERD (ERD _ entities _) = CurryProg
     
   controllerReferencesForEntity :: Entity -> CConsDecl
   controllerReferencesForEntity (Entity entityName _) =
-    CCons (dataModuleName, entityName++"Controller") Public []
+    simpleCCons (dataModuleName, entityName++"Controller") Public []

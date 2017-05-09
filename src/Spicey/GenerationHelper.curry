@@ -21,7 +21,7 @@ upperFirst []     = [] -- this case should not occur, but one never knows...
 ------------------------------------------------------------------------
 --- Converts a string into a qualified name of the module "KeyDatabaseSQLite".
 db :: String -> QName
-db f = ("KeyDatabaseSQLite", f)
+db f = ("Database.KeyDatabaseSQLite", f)
 
 --- Converts a string into a qualified name of the module "WUI".
 wui :: String -> QName
@@ -145,7 +145,7 @@ viewFunctionName entityName viewFunction =
   (viewModuleName entityName, viewFunction ++ entityName ++ "View")
 
 viewBlockType :: CTypeExpr
-viewBlockType = listType (CTCons ("HTML","HtmlExp") [])
+viewBlockType = listType (baseType ("HTML","HtmlExp"))
 
 
 attrType :: Attribute -> CTypeExpr

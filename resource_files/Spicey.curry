@@ -27,7 +27,7 @@ module Spicey (
 import Bootstrap3Style
 import Char (isSpace,isDigit)
 import HTML
-import KeyDatabaseSQLite
+import Database.KeyDatabaseSQLite
 import ReadNumeric
 import ReadShowTerm(readsQTerm)
 import System
@@ -198,7 +198,7 @@ wBoolean :: WuiSpec Bool
 wBoolean = wSelectBool "True" "False"
 
 --- A WUI transformer to map WUIs into WUIs for corresponding Maybe types.
-wUncheckMaybe :: a -> WuiSpec a -> WuiSpec (Maybe a)
+wUncheckMaybe :: Eq a => a -> WuiSpec a -> WuiSpec (Maybe a)
 wUncheckMaybe defval wspec =
   wMaybe (transformWSpec (not,not) (wCheckBool [htxt "No value"]))
          wspec
@@ -245,13 +245,13 @@ spiceyFooter =
         
 --- Transforms a view into an HTML form by adding the basic page layout.
 getForm :: ViewBlock -> IO HtmlForm
-getForm viewblock =
-  if viewblock == [HtmlText ""]
-  then return $ HtmlForm "forward to Spicey"
+getForm viewblock = case viewblock of
+  [HtmlText ""] ->
+       return $ HtmlForm "forward to Spicey"
                   [formMetaInfo [("http-equiv","refresh"),
                                  ("content","1; url=spicey.cgi")]]
                   [par [htxt "You will be forwarded..."]]
-  else do
+  _ -> do
     routemenu <- getRouteMenu
     msg       <- getPageMessage
     login     <- getSessionLogin
@@ -338,10 +338,10 @@ maybeCalendarTimeToHtml :: Maybe CalendarTime -> HtmlExp
 maybeCalendarTimeToHtml ct =
   textstyle "type_calendartime" (maybe "" toDayString ct)
 
-userDefinedToHtml :: _ -> HtmlExp
+userDefinedToHtml :: Show a => a -> HtmlExp
 userDefinedToHtml ud = textstyle "type_string" (show ud)
 
-maybeUserDefinedToHtml :: Maybe a -> HtmlExp
+maybeUserDefinedToHtml :: Show a => Maybe a -> HtmlExp
 maybeUserDefinedToHtml ud = textstyle "type_string" (maybe "" show ud)
 
 --------------------------------------------------------------------------
