@@ -41,6 +41,7 @@ spiceyStructure =
     ResourcePatchFile NoExec "Makefile" replaceCurryDir,
     ResourceFile NoExec "Main.curry",
     Directory "system" [
+      ResourceFile NoExec "Bootstrap3Style.curry",
       ResourceFile NoExec "WUI.curry",
       ResourceFile NoExec "Spicey.curry",
       ResourceFile NoExec "Routes.curry",
