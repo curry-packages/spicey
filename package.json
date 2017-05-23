@@ -1,6 +1,6 @@
 {
     "name": "spicey",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "author": "Michael Hanus <mh@informatik.uni-kiel.de>",
     "synopsis": "A web application framework for Curry",
     "category": [ "Web", "Database" ],

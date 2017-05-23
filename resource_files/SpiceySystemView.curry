@@ -5,14 +5,15 @@
 --- and a view of a list of user processes.
 --------------------------------------------------------------------------
 
-module SpiceySystemView(loginView,processListView,historyView)
+module View.SpiceySystemView
+  ( loginView, processListView, historyView )
  where
 
-import Bootstrap3Style (defaultButton, primButton)
-import UserProcesses
-import Processes
-import Spicey
-import Authentication
+import HTML.Styles.Bootstrap3 (defaultButton, primButton)
+import Config.UserProcesses
+import System.Processes
+import System.Spicey
+import System.Authentication
 
 -----------------------------------------------------------------------------
 --- View for login/logout. If the passed login name is the empty string,

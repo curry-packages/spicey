@@ -8,12 +8,10 @@ import Char(toLower)
 
 import Spicey.GenerationHelper
 
--- Name of generic authorization module:
-authModName = "Authorization"
 -- Name of entity-specific authorization module:
-enauthModName = "AuthorizedControllers"
+enauthModName = "Controller.AuthorizedControllers"
 -- Name of module defining the default controller:
-defCtrlModName = "DefaultController"
+defCtrlModName = "Controller.DefaultController"
 
 -- "main"-function
 generateControllersForEntity :: String -> [Entity] -> Entity
@@ -24,9 +22,11 @@ generateControllersForEntity erdname allEntities
  CurryProg
   (controllerModuleName ename)
   -- imports:
-  ["Spicey", "KeyDatabaseSQLite", "HTML", "Time", erdname, viewModuleName ename,
-   "Maybe", "SessionInfo", authModName, enauthModName, "UserProcesses",
-   erdname++"EntitiesToHtml"]
+  [ spiceyModule, "KeyDatabaseSQLite", "HTML", "Time"
+  , erdname, viewModuleName ename
+  , "Maybe", sessionInfoModule, authorizationModule, enauthModName
+  , "Config.UserProcesses",
+   entitiesToHtmlModule erdname]
   [] -- typedecls
   -- functions
   (
@@ -79,7 +79,7 @@ mainController erdname (Entity entityName _) _ _ =
     [simpleRule [] -- no arguments
       (CDoExpr
          [CSPat (CPVar (1,"args"))
-                (constF ("Spicey","getControllerParams")),
+                (constF (spiceyModule,"getControllerParams")),
           CSExpr
            (CCase CRigid (CVar (1,"args"))
             ([cBranch (listPattern [])
@@ -89,22 +89,22 @@ mainController erdname (Entity entityName _) _ _ =
               cBranch (listPattern [stringPattern "new"])
                       (constF (controllerFunctionName entityName "new")),
               cBranch (listPattern [stringPattern "show", CPVar (2,"s")])
-                (applyF ("Spicey","applyControllerOn")
+                (applyF (spiceyModule,"applyControllerOn")
                   [applyF (erdname,"read"++entityName++"Key") [CVar (2,"s")],
                    constF (erdname,"get"++entityName),
                    constF (controllerFunctionName entityName "show")]),
               cBranch (listPattern [stringPattern "edit", CPVar (2,"s")])
-                (applyF ("Spicey","applyControllerOn")
+                (applyF (spiceyModule,"applyControllerOn")
                   [applyF (erdname,"read"++entityName++"Key") [CVar (2,"s")],
                    constF (erdname,"get"++entityName),
                    constF (controllerFunctionName entityName "edit")]),
               cBranch (listPattern [stringPattern "delete", CPVar (2,"s")])
-                (applyF ("Spicey","applyControllerOn")
+                (applyF (spiceyModule,"applyControllerOn")
                   [applyF (erdname,"read"++entityName++"Key") [CVar (2,"s")],
                    constF (erdname,"get"++entityName),
                    constF (controllerFunctionName entityName "delete")]),
               cBranch (CPVar (3,"_"))
-                 (applyF ("Spicey", "displayError")
+                 (applyF (spiceyModule, "displayError")
                          [string2ac "Illegal URL"])])
           )
          ]
@@ -131,7 +131,7 @@ newController erdname (Entity entityName attrList) relationships allEntities =
         (applyF (pre "$")
             [applyF checkAuthorizationFunc
               [applyF (enauthModName,lowerFirst entityName++"OperationAllowed")
-                [constF (authModName,"NewEntity")]],
+                [constF (authorizationModule,"NewEntity")]],
              CLambda [CPVar infovar] $
               CDoExpr (
               (map 
@@ -156,10 +156,10 @@ newController erdname (Entity entityName attrList) relationships allEntities =
                            (zip (manyToOneEntities ++ manyToManyEntities)
                                 [2..]) ++
                       [CLambda [CPVar (200,"entity")]
-                        (applyF ("Spicey","transactionController")
+                        (applyF (spiceyModule,"transactionController")
                           [applyF (transFunctionName entityName "create")
                                  [CVar (200,"entity")],
-                           applyF ("Spicey","nextInProcessOr")
+                           applyF (spiceyModule,"nextInProcessOr")
                                   [callEntityListController entityName,
                                    constF (pre "Nothing")]]),
                        callEntityListController entityName])
@@ -233,7 +233,7 @@ editController erdname (Entity entityName attrList) relationships allEntities =
         (applyF (pre "$")
             [applyF checkAuthorizationFunc
               [applyF (enauthModName,lowerFirst entityName++"OperationAllowed")
-                [applyF (authModName,"UpdateEntity") [CVar pvar]]],
+                [applyF (authorizationModule,"UpdateEntity") [CVar pvar]]],
              CLambda [CPVar infovar] $
               CDoExpr (
               (map 
@@ -289,10 +289,10 @@ editController erdname (Entity entityName attrList) relationships allEntities =
                             (zip (manyToOneEntities ++ manyToManyEntities)
                                  [1..])) ++
                       [CLambda [CPVar (200,"entity")]
-                        (applyF ("Spicey","transactionController")
+                        (applyF (spiceyModule,"transactionController")
                           [applyF (transFunctionName entityName "update")
                                  [CVar (200,"entity")],
-                           applyF ("Spicey","nextInProcessOr")
+                           applyF (spiceyModule,"nextInProcessOr")
                                   [callEntityListController entityName,
                                    constF (pre "Nothing")]]),
                        callEntityListController entityName]
@@ -359,19 +359,20 @@ deleteController erdname (Entity entityName _) _ _ =
     (applyF (pre "$")
        [applyF checkAuthorizationFunc
          [applyF (enauthModName,entlc++"OperationAllowed")
-                 [applyF (authModName,"DeleteEntity") [CVar entvar]]],
+                 [applyF (authorizationModule,"DeleteEntity") [CVar entvar]]],
         CLambda [CPVar (0,"_")] $
-         applyF ("Spicey","confirmController")
+         applyF (spiceyModule,"confirmController")
          [list2ac
            [applyF ("HTML","h3")
              [list2ac
                [applyF ("HTML","htxt")
                 [applyF (pre "concat")
                  [list2ac [string2ac "Really delete entity \"",
-                           applyF (erdname++"EntitiesToHtml",entlc++"ToShortView")
+                           applyF (entitiesToHtmlModule erdname,
+                                   entlc++"ToShortView")
                                   [CVar entvar],
                            string2ac "\"?"]]]]]],
-          applyF ("Spicey","transactionController")
+          applyF (spiceyModule,"transactionController")
             [applyF (transFunctionName entityName "delete")
                     [CVar entvar],
              constF (controllerFunctionName entityName "list")],
@@ -423,7 +424,7 @@ listController erdname (Entity entityName _) _ _ =
         (applyF (pre "$")
             [applyF checkAuthorizationFunc
               [applyF (enauthModName,lowerFirst entityName++"OperationAllowed")
-                [applyF (authModName,"ListEntities") []]],
+                [applyF (authorizationModule,"ListEntities") []]],
              CLambda [CPVar infovar] $
               CDoExpr (            
               [CSPat (CPVar entsvar)
@@ -453,7 +454,7 @@ showController erdname (Entity entityName attrList) relationships allEntities =
         (applyF (pre "$")
             [applyF checkAuthorizationFunc
               [applyF (enauthModName,lowerFirst entityName++"OperationAllowed")
-                [applyF (authModName,"ShowEntity") [CVar pvar]]],
+                [applyF (authorizationModule,"ShowEntity") [CVar pvar]]],
              CLambda [CPVar infovar] $
               CDoExpr (
               (map (\ (ename, num) ->
@@ -619,7 +620,7 @@ relationshipName _ _ [] = error "relationshipName: relationship not found"
 
 
 displayErrorFunction :: QName
-displayErrorFunction = ("Spicey", "displayError")
+displayErrorFunction = (spiceyModule, "displayError")
 
 entityConstructorFunction :: String -> Entity -> [Relationship] -> QName
 entityConstructorFunction erdname (Entity entityName attrList) relationships =
@@ -698,7 +699,7 @@ relationshipsForEntityName ename rels = filter endsIn rels
 generateDefaultController :: String -> [Entity] -> CurryProg
 generateDefaultController _ (Entity ename _:_) = CurryProg
   defCtrlModName
-  [ename++"Controller","Spicey"] -- imports
+  [controllerModuleName ename, spiceyModule] -- imports
   [] -- typedecls
   -- functions
   [cmtfunc
@@ -707,7 +708,8 @@ generateDefaultController _ (Entity ename _:_) = CurryProg
     1
     Public
     controllerType
-    [simpleRule [] (constF (ename++"Controller","main"++ename++"Controller"))]
+    [simpleRule []
+       (constF (controllerModuleName ename, "main"++ename++"Controller"))]
   ]
   [] -- opdecls
 
@@ -716,7 +718,7 @@ generateDefaultController _ (Entity ename _:_) = CurryProg
 generateAuthorizations :: String -> [Entity] -> CurryProg
 generateAuthorizations erdname entities = CurryProg
   enauthModName
-  ["Authorization", "SessionInfo", erdname] -- imports
+  [authorizationModule, sessionInfoModule, erdname] -- imports
   [] -- typedecls
   -- functions
   (map operationAllowed entities)
@@ -729,30 +731,30 @@ generateAuthorizations erdname entities = CurryProg
     (enauthModName, lowerFirst entityName ++ "OperationAllowed")
     1
     Public
-    (CTCons (authModName,"AccessType") [baseType (erdname,entityName)]
-     ~> CTCons ("SessionInfo","UserSessionInfo") []
-     ~> ioType (baseType (authModName,"AccessResult")))
+    (CTCons (authorizationModule,"AccessType") [baseType (erdname,entityName)]
+     ~> CTCons (sessionInfoModule,"UserSessionInfo") []
+     ~> ioType (baseType (authorizationModule,"AccessResult")))
     [simpleRule [CPVar (1,"at"), CPVar (2,"_")]
      (CCase CRigid (CVar (1,"at"))
-       [cBranch (CPComb (authModName,"ListEntities") []) allowed,
-        cBranch (CPComb (authModName,"NewEntity")    []) allowed,
-        cBranch (CPComb (authModName,"ShowEntity")   [CPVar (3,"_")]) allowed,
-        cBranch (CPComb (authModName,"DeleteEntity") [CPVar (3,"_")]) allowed,
-        cBranch (CPComb (authModName,"UpdateEntity") [CPVar (3,"_")]) allowed])]
+       [cBranch (CPComb (authorizationModule,"ListEntities") []) allowed,
+        cBranch (CPComb (authorizationModule,"NewEntity")    []) allowed,
+        cBranch (CPComb (authorizationModule,"ShowEntity")   [CPVar (3,"_")]) allowed,
+        cBranch (CPComb (authorizationModule,"DeleteEntity") [CPVar (3,"_")]) allowed,
+        cBranch (CPComb (authorizationModule,"UpdateEntity") [CPVar (3,"_")]) allowed])]
 
   -- Expression implemented access allowed
-  allowed = applyF (pre "return") [constF (authModName,"AccessGranted")]
+  allowed = applyF (pre "return") [constF (authorizationModule,"AccessGranted")]
 
   -- Expression implemented access denied
   --exprDenied = applyF (pre "return")
-  --                    [applyF (authModName,"AccessDenied")
+  --                    [applyF (authorizationModule,"AccessDenied")
   --                            [string2ac "Operation not allowed!"]]
 
 ------------------------------------------------------------------------
 -- Auxiliaries:
 
-getUserSessionInfoFunc = constF ("SessionInfo","getUserSessionInfo")
+getUserSessionInfoFunc = constF (sessionInfoModule,"getUserSessionInfo")
 
-checkAuthorizationFunc = (authModName,"checkAuthorization")
+checkAuthorizationFunc = (authorizationModule,"checkAuthorization")
 
 ------------------------------------------------------------------------

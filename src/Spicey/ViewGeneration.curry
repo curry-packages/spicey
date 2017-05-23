@@ -16,8 +16,9 @@ generateViewsForEntity erdname allEntities
      noPKeyAttrs = filter notPKey attrlist
   in CurryProg
   (viewModuleName ename)
-  ["WUI", "HTML", "Time", "Sort", "Bootstrap3Style", "Spicey", "SessionInfo",
-   erdname, erdname++"EntitiesToHtml"] -- imports
+  [ "WUI", "HTML", "Time", "Sort", bootstrapModule
+  , spiceyModule, sessionInfoModule
+  , erdname, entitiesToHtmlModule erdname] -- imports
   [] -- typedecls
   -- functions
   [
@@ -82,8 +83,8 @@ wuiSpec erdname (Entity entityName attrlist) relationships allEntities =
                   ]) manyToManyEntities)
               )
             ),
-            applyF ("Spicey", "renderLabels")
-                   [constF (erdname++"EntitiesToHtml",
+            applyF (spiceyModule, "renderLabels")
+                   [constF (entitiesToHtmlModule erdname,
                             lowerFirst entityName++"LabelList")]
           ]
         )]
@@ -279,7 +280,7 @@ createView _ (Entity entityName attrlist) relationships allEntities =
                (zip (manyToOneEntities++manyToManyEntities) [1..])) ++
           [CPVar (100, "controller"), CPVar (101, "cancelcontroller")]
         )
-        (applyF ("Spicey","renderWuiForm")
+        (applyF (spiceyModule,"renderWuiForm")
            [applyF (viewModuleName entityName, "w"++entityName)
               (map (\ (name, varId) -> CVar (varId,("possible"++name++"s")))
                    (zip (manyToOneEntities++manyToManyEntities) [1..])),
@@ -337,7 +338,7 @@ editView erdname (Entity entityName attrlist) relationships allEntities =
                (zip (manyToOneEntities++manyToManyEntities) [2..])) ++
           [CPVar (1, "controller"), CPVar (102, "cancelcontroller")]
         )
-        (applyF ("Spicey","renderWuiForm")
+        (applyF (spiceyModule,"renderWuiForm")
              [applyF (viewModuleName entityName, "w"++entityName++"Type") (
                [cvar (lowerFirst entityName)] ++
                 --(map (\ (name, varId) -> CVar(varId,((lowerFirst name)++"s"))) (zip manyToManyEntities [2..])) ++
@@ -447,7 +448,7 @@ showView erdname (Entity entityName attrlist) relationships allEntities =
                (zip manyToManyEntities [(length manyToOneEntities + 3)..]))
         )
         (applyF (pre "++")
-              [applyF (erdname++"EntitiesToHtml",
+              [applyF (entitiesToHtmlModule erdname,
                        lowerFirst entityName++"ToDetailsView")
                   ([CVar evar] ++
                    map (\ (name, varId) -> CVar (varId,"related"++name))
@@ -488,12 +489,12 @@ listView erdname (Entity entityName attrlist) _ _ =
                      [list2ac [applyF ("HTML", "htxt")
                                       [string2ac $ entityName ++ " list"]]],
               list2ac [
-                applyF ("Spicey", "spTable") [
+                applyF (spiceyModule, "spTable") [
                   applyF (pre "++") [
                     list2ac [
                       applyF (pre "take") [
                         CLit (CIntc (length attrlist)),
-                        constF (erdname++"EntitiesToHtml",
+                        constF (entitiesToHtmlModule erdname,
                                 lowerFirst entityName++"LabelList")
                       ]
                     ],
@@ -514,12 +515,13 @@ listView erdname (Entity entityName attrlist) _ _ =
           (ctvar entityName ~> listType viewBlockType)
           [simpleRule [CPVar envar]
              (applyF (pre "++") [
-                applyF (erdname++"EntitiesToHtml",
+                applyF (entitiesToHtmlModule erdname,
                         lowerFirst entityName++"ToListView")
                        [cvar $ lowerFirst entityName],
                 applyF (pre "if_then_else")
                  [applyF (pre "==")
-                   [applyF ("SessionInfo","userLoginOfSession") [CVar infovar],
+                   [applyF (sessionInfoModule,"userLoginOfSession")
+                           [CVar infovar],
                     constF (pre "Nothing")],
                   list2ac [],
                   list2ac
@@ -565,4 +567,4 @@ entityInterface attrlist manyToOne manyToMany =
 
 -- Type "UserSessionInfo"
 userSessionInfoType :: CTypeExpr
-userSessionInfoType = baseType ("SessionInfo","UserSessionInfo")
+userSessionInfoType = baseType (sessionInfoModule,"UserSessionInfo")

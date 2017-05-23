@@ -7,13 +7,13 @@
 --- @author Michael Hanus
 ----------------------------------------------------------------------------
 
-module Authentication (
+module System.Authentication (
   getUserHash, randomPassword,
   getSessionLogin, loginToSession, logoutFromSession
  ) where
 
-import SessionInfo
-import Crypto
+import System.SessionInfo
+import System.Crypto
 
 --------------------------------------------------------------------------
 -- Operations for hashing.

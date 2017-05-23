@@ -51,8 +51,8 @@ createViews path (ERD name entities relationship) =
 
     saveView :: String -> [Entity] -> [Relationship] -> Entity -> IO ()
     saveView erdname allEntities relationships (Entity ename attrlist) = do
-      putStrLn ("Saving View "++ename++"View.curry ...")
-      writeFile (path </> ename++"View.curry")
+      putStrLn ("Saving view operations in 'View."++ename++".curry'...")
+      writeFile (path </> ename++".curry")
                 (showCProg (generateViewsForEntity erdname allEntities
                               (Entity ename attrlist) relationships))
 
@@ -75,8 +75,8 @@ createControllers path (ERD name entities relationship) = do
 
   saveController :: String -> [Entity] -> [Relationship] -> Entity -> IO ()
   saveController erdname allEntities relationships (Entity ename attrlist) = do
-    putStrLn ("Saving Controller "++ename++"Controller.curry ...")
-    writeFile (path </> ename++"Controller.curry")
+    putStrLn ("Saving controllers in 'Controller."++ename++".curry'...")
+    writeFile (path </> ename++".curry")
               (showCProg (generateControllersForEntity erdname allEntities
                             (Entity ename attrlist) relationships))
 
@@ -93,7 +93,7 @@ createHtmlHelper path (ERD name entities relationship) =
 
   saveToHtml :: String -> [Entity] -> [Relationship] -> IO ()
   saveToHtml erdname allEntities relationships = do
-    putStrLn ("Saving "++erdname++"EntitiesToHtml.curry ...")
+    putStrLn $ "Saving 'View."++entitiesToHtmlModule erdname++".curry'..."
     fileh <- openFile (path </> erdname++"EntitiesToHtml.curry") WriteMode
     hPutStr fileh (showCProg (generateToHtml erdname allEntities relationships))
     hClose fileh
@@ -119,12 +119,12 @@ createRoutesForTerm _ termpath path _ = do
 
 createRoutes :: String -> ERD -> IO ()
 createRoutes path erd = do
-  putStrLn ("Saving "++mappingModuleName++".curry ...")
-  mmfileh <- openFile (path </> mappingModuleName++".curry") WriteMode
+  putStrLn $ "Saving '"++mappingModuleName++".curry'..."
+  mmfileh <- openFile (path </> "ControllerMapping.curry") WriteMode
   hPutStr mmfileh (showCProg (generateRoutesForERD erd))
   hClose mmfileh  
-  putStrLn ("Saving "++dataModuleName++".curry ...")
-  dmfileh <- openFile (path </> dataModuleName++".curry") WriteMode
+  putStrLn $ "Saving '"++dataModuleName++".curry'..."
+  dmfileh <- openFile (path </> "RoutesData.curry") WriteMode
   hPutStr dmfileh (showCProg (generateStartpointDataForERD erd))
   hClose dmfileh
 

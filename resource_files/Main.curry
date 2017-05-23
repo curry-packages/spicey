@@ -4,13 +4,14 @@
 
 module Main where
 
-import ControllerMapping
-import Spicey
-import WUI
 import HTML
-import Routes
-import RoutesData
-import Processes
+import WUI
+
+import Config.ControllerMapping
+import Config.RoutesData
+import System.Routes
+import System.Processes
+import System.Spicey
 
 
 dispatcher :: IO HtmlForm

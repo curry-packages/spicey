@@ -3,13 +3,12 @@
 --- to controllers.
 --------------------------------------------------------------------------
 
-module Routes(
-  getControllerReference,
-  getRouteMenu
-) where
+module System.Routes
+  ( getControllerReference, getRouteMenu )
+ where
 
 import HTML
-import RoutesData
+import Config.RoutesData
 
 --generated in RoutesData
 --type Route = (String, UrlMatch, ControllerReference)

@@ -2,24 +2,23 @@
 --- This module implements the management to execute user processes.
 --------------------------------------------------------------------------
 
-module Processes(
-  processNames,
-  isInProcess, startProcess, removeCurrentProcess, advanceInProcess,
-  nextControllerRefInProcessOrForUrl
- ) where
+module System.Processes
+  ( processNames
+  , isInProcess, startProcess, removeCurrentProcess, advanceInProcess
+  , nextControllerRefInProcessOrForUrl
+  ) where
 
-import UserProcesses
+import Config.UserProcesses
 
-import Global
-import Maybe
-import HTML
-
-import Routes
-import RoutesData
-import Session
-
-import ReadShowTerm
 import AllSolutions
+import Global
+import HTML
+import Maybe
+import ReadShowTerm
+
+import System.Routes
+import Config.RoutesData
+import System.Session
 
 --------------------------------------------------------------------------
 -- A operations on the datatype for process systems.
