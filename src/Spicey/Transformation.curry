@@ -62,8 +62,8 @@ eRN i1 e1 e2 (ens,rels) r@(Relationship rname _)
                 in 
                 (e:ens, r1:r2:rels)
 
-eRJ :: Int -> Int -> Int -> String -> String -> ([Entity],[Relationship]) -> Relationship 
-    -> ([Entity],[Relationship])
+eRJ :: Int -> Int -> Int -> String -> String -> ([Entity],[Relationship])
+    -> Relationship -> ([Entity],[Relationship])
 eRJ i1 _ i3 e1 e2 (ens, rels) r@(Relationship rname _)
   | i1==1 = (addFKey e1 e2 rname False (i3==1) ens ens, (r:rels))       --(1,1):(0,j)
   | otherwise = if i3==1   
@@ -78,12 +78,16 @@ rNRN ens rels r =
   in
   (e:ens, r1:r2:rels)
 
+rNRJ :: Int -> Int -> Int -> String -> String -> [Entity]
+     -> [Relationship] -> Relationship -> ([Entity], [Relationship])
 rNRJ _ i2 i3 e1 e2 ens rels r@(Relationship rname _)  
   | i2==0 && i3==1 = (addFKey e1 e2 rname True False ens ens, (r:rels)) --(_,n):(0,1)
   | otherwise = let (r1,e,r2) = addExtraEntity r ens                    --(_,n):(_,i)
                 in 
                 (e:ens, r1:r2:rels) 
 
+rJRJ :: Int -> Int -> Int -> Int -> String -> String -> [Entity]
+     -> [Relationship] -> Relationship -> ([Entity], [Relationship])
 rJRJ i1 i2 _ i4 e1 e2 ens rels r@(Relationship rname _) 
   | i1==0 && i2==1 = (addFKey e1 e2 rname True (i4==1) ens ens, (r:rels)) --(0,1):(0,1)/(0,1):(_,j)
   | otherwise = let (r1,e,r2) = addExtraEntity r ens                      --(_,i):(_,j)
@@ -102,6 +106,8 @@ addFKey e1 e2 rname null unique (e@(Entity n (a:attrs)) : ens) ens'
                                   (if unique then Unique else NoKey) null]))
       : ens 
   | otherwise = e : addFKey e1 e2 rname null unique ens ens' 
+addFKey _ _ _ _ _ (Entity _ [] : _) _ =
+  error "addFKey: empty attribute list"
 
 
 --foreign key for extra entity
@@ -114,14 +120,18 @@ addFKey' ename rname null (Entity n attrs) es =
 
 getAttributeName :: Attribute -> String
 getAttributeName (Attribute n _ _ _) = n
+
 getKeyAttribute :: String -> [Entity] -> Attribute
 getKeyAttribute ename ((Entity n attrs) : ens) 
   | ename == n = getKey attrs
   | otherwise = getKeyAttribute ename ens
+getKeyAttribute _ [] = error "getKeyAttribute: empty entity list"
+
 getKey :: [Attribute] -> Attribute
 getKey (a@(Attribute _ _ k _):attrs)
   | PKey == k = a
   | otherwise = getKey attrs  
+getKey [] = error "getKey: empty attribute list"
 
 -- e1   -   e2
 -- e1 - R - e2

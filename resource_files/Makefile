@@ -63,4 +63,4 @@ clean:
 # database files first!)
 .PHONY: cleanall
 cleanall: clean
-	$(CPM) clean
+	/bin/rm -rf $(WEBSERVERDIR)
