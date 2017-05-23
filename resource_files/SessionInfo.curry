@@ -9,13 +9,13 @@
 --- @author Michael Hanus
 ----------------------------------------------------------------------------
 
-module SessionInfo (
+module System.SessionInfo (
   UserSessionInfo(..), userLoginOfSession, setUserLoginOfSession, 
   getUserSessionInfo, updateUserSessionInfo
  ) where
 
-import Session
 import Global
+import System.Session
 
 --------------------------------------------------------------------------
 --- The data associated to a user session.

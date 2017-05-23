@@ -1,11 +1,12 @@
 --- This module specifies the access authorization to web pages.
 
-module Authorization(AccessType(..), AccessResult(..),
-                     checkAuthorization) where
+module System.Authorization
+  ( AccessType(..), AccessResult(..), checkAuthorization )
+ where
 
-import Spicey(Controller,displayError)
 import HTML
-import SessionInfo
+import System.Spicey(Controller,displayError)
+import System.SessionInfo
 
 --- The various kinds of operations applied to an entity.
 data AccessType a = NewEntity | ShowEntity a | UpdateEntity a | DeleteEntity a

@@ -28,15 +28,35 @@ wui :: String -> QName
 wui f = ("WUI", f)
 
 -- Some module names:
+spiceyModule :: String
+spiceyModule = "System.Spicey"
+
+authenticationModule :: String
+authenticationModule = "System.Authentication"
+
+-- Name of generic authorization module:
+authorizationModule :: String
+authorizationModule = "System.Authorization"
+
+sessionInfoModule :: String
+sessionInfoModule = "System.SessionInfo"
+
 dataModuleName :: String
-dataModuleName = "RoutesData"
+dataModuleName = "Config.RoutesData"
 
 mappingModuleName :: String
-mappingModuleName = "ControllerMapping"
+mappingModuleName = "Config.ControllerMapping"
+
+--- Name of EntitiesToHtml module.
+entitiesToHtmlModule :: String -> String
+entitiesToHtmlModule erdname = "View." ++ erdname ++ "EntitiesToHtml"
+
+bootstrapModule :: String
+bootstrapModule = "HTML.Styles.Bootstrap3"
 
 -- Name of hrefButton operation:
 hrefButtonName :: QName
-hrefButtonName = ("Bootstrap3Style","hrefButton")
+hrefButtonName = (bootstrapModule,"hrefButton")
 
 relatedRelation :: String -> Relationship -> String
 relatedRelation en (Relationship _ [REnd en1 _ _, REnd en2 _ _]) =
@@ -117,10 +137,10 @@ linkTableName ename1 ename2 entities =
         
 --- The standard type of new and list controllers.
 controllerType :: CTypeExpr
-controllerType = baseType ("Spicey","Controller")
+controllerType = baseType (spiceyModule,"Controller")
 
 controllerModuleName :: String -> String
-controllerModuleName entityName = entityName ++ "Controller"
+controllerModuleName entityName = "Controller." ++ entityName
 
 --- The name of the controller function for a given entity and controller
 --- functionality.
@@ -138,7 +158,7 @@ transFunctionName entityName controllerFunction =
   
   
 viewModuleName :: String -> String
-viewModuleName entityName = entityName++"View"
+viewModuleName entityName = "View." ++ entityName
 
 viewFunctionName :: String -> String -> QName
 viewFunctionName entityName viewFunction =
@@ -266,11 +286,11 @@ widgetFor domain null =
     IntDom _    -> addMaybe (constF (wui "wInt"))
     FloatDom _  -> addMaybe (constF (wui "wFloat"))
     CharDom _   -> addMaybe (constF (wui "wString"))
-    StringDom _ -> if null then constF ("Spicey","wString")
+    StringDom _ -> if null then constF (spiceyModule,"wString")
                            else constF (wui "wRequiredString")
                    --constF (wui (if null then "wString" else "wRequiredString"))
     BoolDom _   -> addMaybe (constF (wui "wBoolean"))
-    DateDom _   -> addMaybe (constF ("Spicey", "wDateType"))
+    DateDom _   -> addMaybe (constF (spiceyModule, "wDateType"))
     UserDefined _ _ -> addMaybe (applyF (wui "wCheckBool")
                                         [applyF ("HTML","htxt") [string2ac ""]])
     KeyDom _    -> addMaybe (constF (wui "wInt"))
@@ -279,7 +299,7 @@ widgetFor domain null =
   -- adds a Maybe WUI if null values are allowed
   addMaybe e =
     if null
-     then applyF ("Spicey","wUncheckMaybe")
+     then applyF (spiceyModule,"wUncheckMaybe")
             [domainDefaultValue
                (applyF ("Time", "CalendarTime")
                        (map (CLit . CIntc) [2016,1,1,0,0,0,0]))

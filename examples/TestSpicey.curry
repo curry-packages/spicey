@@ -20,7 +20,8 @@ compileSpiceyApplication erdname = do
   system $ spiceup ++ " " ++
            packagePath </> "examples" </> erdname ++ "ERD.curry"
   putStrLn $ "Compiling Spicey application in directory '" ++ testdir ++ "'..."
-  ecode <- system $ "make CURRYOPTIONS=\":set parser -Wnone\" compile"
+  ecode <- system $ "cd " ++ erdname ++ " && make install && " ++
+                    "make CURRYOPTIONS=\":set parser -Wnone\" compile"
   setCurrentDirectory curdir
   system $ "/bin/rm -rf " ++ testdir
   return ecode

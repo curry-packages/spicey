@@ -5,18 +5,19 @@
 --- a controller to start selected user processes.
 --------------------------------------------------------------------------
 
-module SpiceySystemController
+module Controller.SpiceySystemController
   (loginController,processListController,historyController)
  where
 
-import Spicey
-import Session
-import UserProcesses
-import Processes
-import SpiceySystemView
 import ReadNumeric
-import Authentication
-import DefaultController
+
+import System.Spicey
+import System.Session
+import Config.UserProcesses
+import System.Processes
+import View.SpiceySystemView
+import System.Authentication
+import Controller.DefaultController
 
 -----------------------------------------------------------------------------
 --- Controller for login/logout.

@@ -10,8 +10,8 @@ import Spicey.GenerationHelper
 -- "main"-function
 generateToHtml :: String -> [Entity] -> [Relationship] -> CurryProg
 generateToHtml erdname allEntities relationships = simpleCurryProg
-  (erdname++"EntitiesToHtml")
-  ["WUI", "HTML", "Time", "Spicey", erdname] -- imports
+  (entitiesToHtmlModule erdname)
+  ["WUI", "HTML", "Time", spiceyModule, erdname] -- imports
   [] -- typedecls
   -- functions
   (
@@ -116,7 +116,7 @@ toDetailsView erdname (Entity entityName attrlist) relationships allEntities =
     )
     (CSimpleRhs
        (list2ac [
-          applyF ("Spicey", "spTable") [
+          applyF (spiceyModule, "spTable") [
             applyF (pre "map")
             [
               CLambda [tuplePattern [CPVar(2, "label"), CPVar(3, "value")]]
@@ -185,13 +185,14 @@ labelList erdname (Entity entityName attrlist) relationships allEntities =
        )]
 
 thisModuleName :: String -> String
-thisModuleName erdname = erdname++"EntitiesToHtml"
+thisModuleName erdname = entitiesToHtmlModule erdname
 
 attributeToConverter :: Attribute -> QName
 attributeToConverter (Attribute _ domain _ isnull) =
-  ("Spicey", if isnull && not (isStringDom domain)
-             then "maybe" ++ upperFirst (domainToString domain) ++ "ToHtml"
-             else domainToString domain ++ "ToHtml")
+  (spiceyModule,
+   if isnull && not (isStringDom domain)
+     then "maybe" ++ upperFirst (domainToString domain) ++ "ToHtml"
+     else domainToString domain ++ "ToHtml")
 
 domainToString :: Domain -> String
 domainToString domain =

@@ -10,10 +10,10 @@ import Spicey.GenerationHelper
 
 generateRoutesForERD :: ERD -> CurryProg
 generateRoutesForERD (ERD _ entities _) =
- let spiceySysCtrl = "SpiceySystemController" in
+ let spiceySysCtrl = "Controller.SpiceySystemController" in
  simpleCurryProg
   mappingModuleName
-  (["Spicey", "Routes", spiceySysCtrl, dataModuleName] ++
+  ([spiceyModule, "System.Routes", spiceySysCtrl, dataModuleName] ++
    (map (\e -> controllerModuleName (entityName e)) entities)) -- imports
   [] -- typedecls
   [
@@ -32,7 +32,7 @@ generateRoutesForERD (ERD _ entities _) =
                          (constF (spiceySysCtrl, "loginController"))] ++
                 map branchesForEntity entities ++
                 [cBranch (CPVar (2,"_"))
-                  (applyF ("Spicey", "displayError")
+                  (applyF (spiceyModule, "displayError")
                           [string2ac "getController: no mapping found"])]
               )
           )]
@@ -40,18 +40,20 @@ generateRoutesForERD (ERD _ entities _) =
   [] -- opdecls
   
 -- startpoint controller prefixes
+controllerPrefixes :: [String]
 controllerPrefixes = ["List","New"]
 
 branchesForEntity :: Entity -> (CPattern, CRhs)
 branchesForEntity (Entity entityName _) =
-  let controllerReference = entityName++"Controller"
+  let controllerReference = entityName ++ "Controller"
    in cBranch (CPComb ("RoutesData", controllerReference) [])
-              (constF (controllerReference, "main"++controllerReference))
+              (constF (controllerModuleName entityName,
+                       "main" ++ controllerReference))
   
 generateStartpointDataForERD :: ERD -> CurryProg
 generateStartpointDataForERD (ERD _ entities _) = simpleCurryProg
   dataModuleName
-  ["Authentication"] -- imports
+  [authenticationModule] -- imports
   [
     CType (dataModuleName, "ControllerReference") Public []
           ([simpleCCons (dataModuleName, "ProcessListController") Public [],
@@ -73,7 +75,7 @@ generateStartpointDataForERD (ERD _ entities _) = simpleCurryProg
      [simpleRule []
         (CDoExpr
           [CSPat (CPVar (1,"login"))
-                 (constF ("Authentication","getSessionLogin")),
+                 (constF (authenticationModule,"getSessionLogin")),
            CSExpr $ applyF (pre "return")
              [list2ac (
                [tupleExpr

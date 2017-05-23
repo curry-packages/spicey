@@ -7,7 +7,7 @@
 --- to hold some session-specific data.
 --------------------------------------------------------------------------
 
-module Session (
+module System.Session (
   sessionCookie,
   SessionStore, emptySessionStore,
   getSessionData, putSessionData, removeSessionData
@@ -17,7 +17,8 @@ import HTML
 import Time
 import Global
 import List
-import Crypto
+
+import System.Crypto
 
 --- The life span in minutes to store data in sessions.
 --- Thus, older data is deleted by a clean up that is initiated

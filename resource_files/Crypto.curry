@@ -6,9 +6,9 @@
 --- @author Michael Hanus
 ----------------------------------------------------------------------------
 
-module Crypto (
-  getHash, randomString
- ) where
+module System.Crypto
+  ( getHash, randomString )
+ where
 
 import Random
 import IO

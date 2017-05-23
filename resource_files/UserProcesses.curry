@@ -3,12 +3,11 @@
 --- be selected by the user.
 --------------------------------------------------------------------------
 
-module UserProcesses(Processes(..),
-                     ControllerResult,
-                     availableProcesses)
+module Config.UserProcesses
+  ( Processes(..), ControllerResult, availableProcesses )
  where
 
-import RoutesData
+import Config.RoutesData
 
 --------------------------------------------------------------------------
 --- Datatype for the specification of process systems.

@@ -3,7 +3,7 @@
 --- generic implementation of the Spicey entities.
 --------------------------------------------------------------------------
 
-module Spicey (
+module System.Spicey (
   module System, 
   module HTML, 
   module ReadNumeric, 
@@ -24,22 +24,23 @@ module Spicey (
   saveLastUrl, getLastUrl, getLastUrls
   ) where
 
-import Bootstrap3Style
 import Char (isSpace,isDigit)
+import Global
 import HTML
 import Database.KeyDatabaseSQLite
 import ReadNumeric
 import ReadShowTerm(readsQTerm)
 import System
 import Time
+
+import HTML.Styles.Bootstrap3
 import WUI
 
-import Routes
-import Processes
-import UserProcesses
-import Session
-import Global
-import Authentication
+import Config.UserProcesses
+import System.Routes
+import System.Processes
+import System.Session
+import System.Authentication
 
 ---------------- vvvv -- Framework functions -- vvvv -----------------------
 

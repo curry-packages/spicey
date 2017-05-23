@@ -2,7 +2,8 @@
 
 module Spicey.SpiceUp where
 
-import Database.ERDGoodies (storeERDFromProgram)
+import Database.ERD        (readERDTermFile)
+import Database.ERDGoodies (erdName, storeERDFromProgram)
 import Directory
 import Distribution
 import FilePath            ((</>))
@@ -15,7 +16,7 @@ import Spicey.Scaffolding
 systemBanner :: String
 systemBanner =
   let bannerText = "Spicey Web Framework (Version " ++ packageVersion ++
-                   " of 09/05/17)"
+                   " of 23/05/17)"
       bannerLine = take (length bannerText) (repeat '-')
    in bannerLine ++ "\n" ++ bannerText ++ "\n" ++ bannerLine
 
@@ -35,35 +36,36 @@ data DirTree =
  | GeneratedFromERD (String -> String -> String -> String -> IO ())
    -- takes an operation to generate code from ERD specification
 
-spiceyStructure :: DirTree
-spiceyStructure = 
+spiceyStructure :: String -> DirTree
+spiceyStructure pkgname = 
   Directory "." [
     ResourceFile NoExec "README.txt",
-    ResourcePatchFile NoExec "Makefile" replaceCurryDir,
-    ResourceFile NoExec "Main.curry",
-    Directory "system" [
-      ResourceFile NoExec "Bootstrap3Style.curry",
-      ResourceFile NoExec "WUI.curry",
-      ResourceFile NoExec "Spicey.curry",
-      ResourceFile NoExec "Routes.curry",
-      ResourceFile NoExec "Crypto.curry",
-      ResourceFile NoExec "Session.curry",
-      ResourceFile NoExec "SessionInfo.curry",
-      ResourceFile NoExec "Authorization.curry",
-      ResourceFile NoExec "Authentication.curry",
-      ResourceFile NoExec "Processes.curry" ],
-    Directory "views" [
-      ResourceFile NoExec "SpiceySystemView.curry",
-      GeneratedFromERD createViewsForTerm,
-      GeneratedFromERD createHtmlHelpersForTerm ],
-    Directory "controllers" [
-      ResourceFile NoExec "SpiceySystemController.curry",
-      GeneratedFromERD createControllersForTerm ],
-    Directory "models" [
-      GeneratedFromERD createModelsForTerm ],
-    Directory "config" [
-      ResourceFile NoExec "UserProcesses.curry",
-      GeneratedFromERD createRoutesForTerm ],
+    ResourcePatchFile NoExec "package.json" (replacePackageName pkgname),
+    ResourcePatchFile NoExec "Makefile" replaceCurryBin,
+    Directory "src" [
+      ResourceFile NoExec "Main.curry",
+      Directory "System" [
+        ResourceFile NoExec "Spicey.curry",
+        ResourceFile NoExec "Routes.curry",
+        ResourceFile NoExec "Crypto.curry",
+        ResourceFile NoExec "Session.curry",
+        ResourceFile NoExec "SessionInfo.curry",
+        ResourceFile NoExec "Authorization.curry",
+        ResourceFile NoExec "Authentication.curry",
+        ResourceFile NoExec "Processes.curry" ],
+      Directory "View" [
+        ResourceFile NoExec "SpiceySystemView.curry",
+        GeneratedFromERD createViewsForTerm,
+        GeneratedFromERD createHtmlHelpersForTerm ],
+      Directory "Controller" [
+        ResourceFile NoExec "SpiceySystemController.curry",
+        GeneratedFromERD createControllersForTerm ],
+      Directory "Model" [
+        GeneratedFromERD createModelsForTerm ],
+      Directory "Config" [
+        ResourceFile NoExec "UserProcesses.curry",
+        GeneratedFromERD createRoutesForTerm ]
+    ],
     Directory "public" [
       ResourceFile NoExec "index.html",
       ResourceFile NoExec "favicon.ico",
@@ -93,12 +95,20 @@ spiceyStructure =
   ]
 
 -- Replace every occurrence of "XXXCURRYBINXXX" by installDir++"/bin"
-replaceCurryDir :: String -> String
-replaceCurryDir [] = []
-replaceCurryDir (c:cs)
+replaceCurryBin :: String -> String
+replaceCurryBin [] = []
+replaceCurryBin (c:cs)
   | c=='X' && take 13 cs == "XXCURRYBINXXX"
-    = installDir ++ "/bin" ++ replaceCurryDir (drop 13 cs)
-  | otherwise = c : replaceCurryDir cs
+    = installDir ++ "/bin" ++ replaceCurryBin (drop 13 cs)
+  | otherwise = c : replaceCurryBin cs
+
+-- Replace every occurrence of "XXXPKGNAMEXXX" by first argument
+replacePackageName :: String -> String -> String
+replacePackageName _ [] = []
+replacePackageName pn (c:cs)
+  | c=='X' && take 12 cs == "XXPKGNAMEXXX"
+    = pn ++ replacePackageName pn (drop 12 cs)
+  | otherwise = c : replacePackageName pn cs
 
 copyFileLocal :: FileMode -> String -> String -> String -> IO ()
 copyFileLocal fmode path resource_dir filename = do
@@ -153,16 +163,12 @@ main = do
   putStrLn systemBanner
   args <- getArgs
   case args of
-    ["-h"]     -> putStrLn helpText >> exitWith 0
-    ["--help"] -> putStrLn helpText >> exitWith 0
-    ["-?"]     -> putStrLn helpText >> exitWith 0
+    ["-h"]     -> spiceupHelp 0
+    ["--help"] -> spiceupHelp 0
+    ["-?"]     -> spiceupHelp 0
     ["--db",dbfile,orgfile] -> createStructureWith orgfile dbfile
     [orgfile]               -> createStructureWith orgfile ""
-    _ -> putStrLn ("Wrong arguments!\n" ++ helpText) >> exitWith 1
-  putStrLn $ take 70 (repeat '-')
-  putStrLn "Source files for the application generated.\n"
-  putStrLn "IMPORTANT NOTE: Before you deploy your web application (by 'make deploy'),"
-  putStrLn "you should define the variable WEBSERVERDIR in the Makefile!"
+    _ -> putStrLn ("Wrong arguments!\n") >> spiceupHelp 1
  where
   createStructureWith orgfile dbfile = do
     -- The directory containing the project generator:
@@ -173,18 +179,41 @@ main = do
                    ".lcurry" `isSuffixOf` orgfile
                   then storeERDFromProgram orgfile
                   else return orgfile
-    curdir <- getCurrentDirectory
-    createStructure curdir resourcedir termfile dbfile spiceyStructure
-    -- delete generated ERD term file:
-    when (orgfile /= termfile) $ removeFile termfile
+    erd <- readERDTermFile termfile
+    let pkgname = erdName erd
+    createDirectoryIfMissing True pkgname
+    createStructure pkgname resourcedir termfile dbfile
+                    (spiceyStructure pkgname)
+    when (orgfile /= termfile) $ do
+      -- delete generated ERD term file:
+      removeFile termfile
+      -- save original ERD specification in src/Model directory:
+      copyFile orgfile
+               (pkgname </> "src" </> "Model" </> erdName erd ++ "_ERD.curry")
+    putStrLn (helpText pkgname)
 
-helpText :: String
-helpText = unlines $
-  [ "Usage:"
-  , ""
-  , "    spiceup [--db <db file>] <ERD program file>"
-  , ""
-  , "Parameters:"
-  , "--db <db file>    : name of the SQLite3 database file (default: <ERD name>.db)"
-  , "<ERD program file>: name of Curry program file containing ERD definition"
-  ]
+  helpText pkgname = unlines $
+    [ take 70 (repeat '-')
+    , "Source files for the application generated as Curry package '" ++
+      pkgname ++ "'."
+    , ""
+    , "Please go into the package directory where the 'README.txt' file"
+    , "contains some hints how to install the generated application."
+    , ""
+    , "IMPORTANT NOTE:"
+    , "Before you deploy your web application (by 'make deploy'),"
+    , "you should define the variable WEBSERVERDIR in the Makefile!"
+    ]
+
+spiceupHelp :: Int -> IO ()
+spiceupHelp ecode = putStrLn helpText >> exitWith ecode
+ where
+  helpText = unlines $
+   [ "Usage:"
+   , ""
+   , "    spiceup [--db <db file>] <ERD program file>"
+   , ""
+   , "Parameters:"
+   , "--db <db file>    : name of the SQLite3 database file (default: <ERD name>.db)"
+   , "<ERD program file>: name of Curry program file containing ERD definition"
+   ]
