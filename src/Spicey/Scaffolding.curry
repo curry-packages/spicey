@@ -37,39 +37,29 @@ getRelationships (ERD _ _ relationships) = relationships
 getEntities :: ERD -> [Entity]
 getEntities (ERD _ entities _) = entities
 
-createViewsForTerm :: String -> String -> String -> String -> IO ()
-createViewsForTerm _ termpath path _ = do
-  erd <- readERDTermFile termpath
-  createViews path erd
-    
-createViews :: String -> ERD -> IO ()
-createViews path (ERD name entities relationship) =
-   mapIO_ (saveView name (getEntities erdt) (getRelationships erdt))
-          (filter (not . Spicey.GenerationHelper.isGenerated) (getEntities erdt))
-  where
-    erdt = transform (ERD name entities relationship)
+createViews :: String -> ERD -> String -> String -> IO ()
+createViews _ (ERD name entities relationship) path _ =
+  mapIO_ (saveView name (getEntities erdt) (getRelationships erdt))
+         (filter (not . Spicey.GenerationHelper.isGenerated) (getEntities erdt))
+ where
+  erdt = transform (ERD name entities relationship)
 
-    saveView :: String -> [Entity] -> [Relationship] -> Entity -> IO ()
-    saveView erdname allEntities relationships (Entity ename attrlist) = do
-      putStrLn ("Saving view operations in 'View."++ename++".curry'...")
-      writeFile (path </> ename++".curry")
-                (showCProg (generateViewsForEntity erdname allEntities
-                              (Entity ename attrlist) relationships))
+  saveView :: String -> [Entity] -> [Relationship] -> Entity -> IO ()
+  saveView erdname allEntities relationships (Entity ename attrlist) = do
+    putStrLn ("Saving view operations in 'View."++ename++".curry'...")
+    writeFile (path </> ename++".curry")
+              (showCProg (generateViewsForEntity erdname allEntities
+                            (Entity ename attrlist) relationships))
 
-createControllersForTerm :: String -> String -> String -> String -> IO ()
-createControllersForTerm _ termpath path _ = do
-  erd <- readERDTermFile termpath
-  createControllers path erd
-      
-createControllers :: String -> ERD -> IO ()
-createControllers path (ERD name entities relationship) = do
-   mapIO_ (saveController name (getEntities erdt) (getRelationships erdt))
-          (filter (not . Spicey.GenerationHelper.isGenerated) (getEntities erdt))
-   putStrLn "Generating default controller authorization AuthorizedControllers.curry..."
-   writeFile (path </> "DefaultController.curry")
-             (showCProg (generateDefaultController name entities))
-   writeFile (path </> "AuthorizedControllers.curry")
-             (showCProg (generateAuthorizations name entities))
+createControllers :: String -> ERD -> String -> String -> IO ()
+createControllers _ (ERD name entities relationship) path _ = do
+  mapIO_ (saveController name (getEntities erdt) (getRelationships erdt))
+         (filter (not . Spicey.GenerationHelper.isGenerated) (getEntities erdt))
+  putStrLn "Generating default controller authorization AuthorizedControllers.curry..."
+  writeFile (path </> "DefaultController.curry")
+            (showCProg (generateDefaultController name entities))
+  writeFile (path </> "AuthorizedControllers.curry")
+            (showCProg (generateAuthorizations name entities))
  where
   erdt = transform (ERD name entities relationship)
 
@@ -80,14 +70,9 @@ createControllers path (ERD name entities relationship) = do
               (showCProg (generateControllersForEntity erdname allEntities
                             (Entity ename attrlist) relationships))
 
-createHtmlHelpersForTerm :: String -> String -> String -> String -> IO ()
-createHtmlHelpersForTerm _ termpath path _ = do
-  erd <- readERDTermFile termpath
-  createHtmlHelper path erd    
-    
-createHtmlHelper :: String -> ERD -> IO ()
-createHtmlHelper path (ERD name entities relationship) =
-    saveToHtml name (getEntities erdt) (getRelationships erdt)
+createHtmlHelpers :: String -> ERD -> String -> String -> IO ()
+createHtmlHelpers _ (ERD name entities relationship) path _ =
+  saveToHtml name (getEntities erdt) (getRelationships erdt)
  where
   erdt = transform (ERD name entities relationship)
 
@@ -98,10 +83,9 @@ createHtmlHelper path (ERD name entities relationship) =
     hPutStr fileh (showCProg (generateToHtml erdname allEntities relationships))
     hClose fileh
 
--- uses Curry's build-in tool for ERD to Curry transformation
-createModelsForTerm :: String -> String -> String -> String -> IO ()
-createModelsForTerm _ term_path path db_path = do
-  erd <- readERDTermFile term_path
+-- uses Curry's ertools for ERD to Curry transformation
+createModels :: String -> ERD -> String -> String -> IO ()
+createModels term_path erd path db_path = do
   let dbfile = if null db_path then erdName erd ++ ".db"
                                else db_path
   erd2curryWithDBandERD dbfile term_path
@@ -112,13 +96,8 @@ createModelsForTerm _ term_path path db_path = do
   system $ unwords ["cp", term_path, path </> orgerdfile]
   done
 
-createRoutesForTerm :: String -> String -> String -> String -> IO ()
-createRoutesForTerm _ termpath path _ = do
-  erd <- readERDTermFile termpath
-  createRoutes path erd
-
-createRoutes :: String -> ERD -> IO ()
-createRoutes path erd = do
+createRoutes :: String -> ERD -> String -> String -> IO ()
+createRoutes _ erd path _ = do
   putStrLn $ "Saving '"++mappingModuleName++".curry'..."
   mmfileh <- openFile (path </> "ControllerMapping.curry") WriteMode
   hPutStr mmfileh (showCProg (generateRoutesForERD erd))

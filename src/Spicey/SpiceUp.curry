@@ -2,7 +2,7 @@
 
 module Spicey.SpiceUp where
 
-import Database.ERD        (readERDTermFile)
+import Database.ERD        (ERD, readERDTermFile)
 import Database.ERDGoodies (erdName, storeERDFromProgram)
 import Directory
 import Distribution
@@ -16,7 +16,7 @@ import Spicey.Scaffolding
 systemBanner :: String
 systemBanner =
   let bannerText = "Spicey Web Framework (Version " ++ packageVersion ++
-                   " of 23/05/17)"
+                   " of 30/05/17)"
       bannerLine = take (length bannerText) (repeat '-')
    in bannerLine ++ "\n" ++ bannerText ++ "\n" ++ bannerLine
 
@@ -32,7 +32,7 @@ data DirTree =
  | ResourceFile FileMode String   -- a file to be copied from resource directory
  | ResourcePatchFile FileMode String (String->String) -- file to be copied from
       -- resource directory where its contents is patched by the given function
- | GeneratedFromERD (String -> String -> String -> String -> IO ())
+ | GeneratedFromERD (String -> ERD -> String -> String -> IO ())
    -- takes an operation to generate code from ERD specification
 
 spiceyStructure :: String -> DirTree
@@ -54,16 +54,16 @@ spiceyStructure pkgname =
         ResourceFile NoExec "Processes.curry" ],
       Directory "View" [
         ResourceFile NoExec "SpiceySystemView.curry",
-        GeneratedFromERD createViewsForTerm,
-        GeneratedFromERD createHtmlHelpersForTerm ],
+        GeneratedFromERD createViews,
+        GeneratedFromERD createHtmlHelpers ],
       Directory "Controller" [
         ResourceFile NoExec "SpiceySystemController.curry",
-        GeneratedFromERD createControllersForTerm ],
+        GeneratedFromERD createControllers ],
       Directory "Model" [
-        GeneratedFromERD createModelsForTerm ],
+        GeneratedFromERD createModels ],
       Directory "Config" [
         ResourceFile NoExec "UserProcesses.curry",
-        GeneratedFromERD createRoutesForTerm ]
+        GeneratedFromERD createRoutes ]
     ],
     Directory "public" [
       ResourceFile NoExec "index.html",
@@ -126,14 +126,15 @@ ifNotExistsDo path cmd = do
     then putStrLn ("Skipping " ++ path ++ " ...")
     else cmd
 
-createStructure :: String -> String -> String -> String -> DirTree -> IO ()
-createStructure target_path resource_dir _ _ (ResourceFile fmode filename) =
+--- Creates the structure of the source files of the new package.
+createStructure :: String -> String -> ERD -> String -> String -> DirTree -> IO ()
+createStructure target_path resource_dir _ _ _ (ResourceFile fmode filename) =
   let full_path = target_path </> filename
    in ifNotExistsDo full_path
          (putStrLn ("Creating file " ++ full_path ++ " ...") >>
           copyFileLocal fmode target_path resource_dir filename)
       
-createStructure target_path resource_dir _ _
+createStructure target_path resource_dir _ _ _
                 (ResourcePatchFile fmode filename f) =
   let full_path = target_path </> filename
    in ifNotExistsDo full_path $ do
@@ -143,18 +144,18 @@ createStructure target_path resource_dir _ _
          writeFile outfile (f cnt)
          setFileMode fmode outfile
 
-createStructure target_path resource_dir term_path db_path
+createStructure target_path resource_dir erd term_path db_path
                 (Directory dirname subtree) = do
   let full_path = target_path </> dirname
   ifNotExistsDo full_path (putStrLn ("Creating directory "++full_path++" ...")
                            >> createDirectory full_path)
-  foldl (\a b -> a >> createStructure full_path resource_dir term_path db_path b)
+  foldl (\a b -> a >> createStructure full_path resource_dir erd term_path db_path b)
         done subtree
       
-createStructure target_path resource_dir term_path db_path
+createStructure target_path _ erd term_path db_path
                 (GeneratedFromERD generatorFunction) = do
   putStrLn $ "Generating from term file " ++ term_path ++ " ..."
-  generatorFunction resource_dir term_path target_path db_path
+  generatorFunction term_path erd target_path db_path
 
 --- The main operation to start the scaffolding.
 main :: IO ()
@@ -181,7 +182,7 @@ main = do
     erd <- readERDTermFile termfile
     let pkgname = erdName erd
     createDirectoryIfMissing True pkgname
-    createStructure pkgname resourcedir termfile dbfile
+    createStructure pkgname resourcedir erd termfile dbfile
                     (spiceyStructure pkgname)
     when (orgfile /= termfile) $ do
       -- delete generated ERD term file:

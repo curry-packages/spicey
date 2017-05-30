@@ -107,6 +107,7 @@ generateStartpointDataForERD (ERD _ entities _) = CurryProg
  where
   firstEntityName :: [Entity] -> String
   firstEntityName ((Entity entityName _):_) = entityName
+  firstEntityName [] = error "RouteGeneration.firstEntityName: empty list arg"
 
   route :: String -> String -> String -> String -> CExpr
   route desc url uparam controllerDef =
