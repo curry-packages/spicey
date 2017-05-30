@@ -7,7 +7,7 @@
 module Spicey.Transformation(transform) where
 
 import Database.ERD 
-import Database.ERDGoodies
+import Database.ERD.Goodies
 
 ---------------------------------------------------
 -- The main transformation which adds

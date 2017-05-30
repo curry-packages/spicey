@@ -4,9 +4,9 @@ module Spicey.ControllerGeneration where
 
 import AbstractCurry.Types
 import AbstractCurry.Build
-import Database.ERD
-import Database.ERDGoodies
 import Char(toLower)
+import Database.ERD
+import Database.ERD.Goodies
 
 import Spicey.GenerationHelper
 

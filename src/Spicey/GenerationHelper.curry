@@ -4,7 +4,7 @@ import AbstractCurry.Types
 import AbstractCurry.Build
 import Char
 import Database.ERD
-import Database.ERDGoodies
+import Database.ERD.Goodies
 import Time
 
 ------------------------------------------------------------------------

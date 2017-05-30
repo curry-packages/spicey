@@ -2,13 +2,13 @@
 
 module Spicey.SpiceUp where
 
-import Database.ERD        (ERD, readERDTermFile)
-import Database.ERDGoodies (erdName, storeERDFromProgram)
+import Database.ERD         (ERD, readERDTermFile)
+import Database.ERD.Goodies (erdName, storeERDFromProgram)
 import Directory
 import Distribution
-import FilePath            ((</>))
-import List                (isSuffixOf, last)
-import System              (system, getArgs, exitWith)
+import FilePath             ((</>))
+import List                 (isSuffixOf, last)
+import System               (system, getArgs, exitWith)
 
 import Spicey.PackageConfig (packagePath, packageVersion)
 import Spicey.Scaffolding
