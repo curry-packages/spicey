@@ -1,3 +1,5 @@
+{-# OPTIONS_CYMAKE -Wno-incomplete-patterns #-}
+
 module Spicey.ControllerGeneration where
 
 import AbstractCurry.Types
@@ -9,8 +11,11 @@ import Char(toLower)
 import Spicey.GenerationHelper
 
 -- Name of entity-specific authorization module:
+enauthModName :: String
 enauthModName = "Controller.AuthorizedControllers"
+
 -- Name of module defining the default controller:
+defCtrlModName :: String
 defCtrlModName = "Controller.DefaultController"
 
 -- "main"-function
@@ -633,6 +638,8 @@ entityConstructorFunction erdname (Entity entityName attrList) relationships =
 -- arity
 -- functionType: the type of the controller function
 -- rules: the rules defining the controller
+controllerFunction :: String -> String -> String -> Int -> CTypeExpr -> [CRule]
+                   -> CFuncDecl
 controllerFunction description entityName controllerType arity functionType
                    rules =
   stCmtFunc description (controllerFunctionName entityName controllerType) arity
@@ -657,6 +664,7 @@ relationshipsForEntity (Entity entityName _) relationships =
     
 ------ from ERD CodeGeneration
 
+newSuffix :: String -> [Attribute] -> [Relationship] -> String
 newSuffix eName attrs rels = 
   let
     generatedRs = filter isGeneratedR rels
@@ -682,6 +690,7 @@ newSuffix eName attrs rels =
       case c of (Between i (Max j)) -> i>0 && j>i
                 _                   -> False
 
+isGeneratedR :: Relationship -> Bool
 isGeneratedR (Relationship n _) = n == ""
 
 -- extracts the name of the relationship related to a given entity name
@@ -753,8 +762,10 @@ generateAuthorizations erdname entities = simpleCurryProg
 ------------------------------------------------------------------------
 -- Auxiliaries:
 
+getUserSessionInfoFunc :: CExpr
 getUserSessionInfoFunc = constF (sessionInfoModule,"getUserSessionInfo")
 
+checkAuthorizationFunc :: QName
 checkAuthorizationFunc = (authorizationModule,"checkAuthorization")
 
 ------------------------------------------------------------------------
