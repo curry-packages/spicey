@@ -55,7 +55,7 @@ createControllers :: String -> ERD -> String -> String -> IO ()
 createControllers _ (ERD name entities relationship) path _ = do
   mapIO_ (saveController name (getEntities erdt) (getRelationships erdt))
          (filter (not . Spicey.GenerationHelper.isGenerated) (getEntities erdt))
-  putStrLn "Generating default controller authorization AuthorizedControllers.curry..."
+  putStrLn "Generating default controller authorization 'AuthorizedControllers.curry'..."
   writeFile (path </> "DefaultController.curry")
             (showCProg (generateDefaultController name entities))
   writeFile (path </> "AuthorizedControllers.curry")
