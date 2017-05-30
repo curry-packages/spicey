@@ -123,39 +123,40 @@ ifNotExistsDo path cmd = do
   fileExists <- doesFileExist path
   dirExists  <- doesDirectoryExist path
   if fileExists || dirExists
-    then putStrLn ("Skipping " ++ path ++ " ...")
+    then putStrLn $ "Skipping '" ++ path ++ "'..."
     else cmd
 
 --- Creates the structure of the source files of the new package.
-createStructure :: String -> String -> ERD -> String -> String -> DirTree -> IO ()
-createStructure target_path resource_dir _ _ _ (ResourceFile fmode filename) =
+createStructure :: String -> String -> ERD -> String -> String -> DirTree
+                -> IO ()
+createStructure target_path resource_dir _ _ _
+                (ResourceFile fmode filename) = do
   let full_path = target_path </> filename
-   in ifNotExistsDo full_path
-         (putStrLn ("Creating file " ++ full_path ++ " ...") >>
-          copyFileLocal fmode target_path resource_dir filename)
+  ifNotExistsDo full_path $ do
+    putStrLn $ "Creating file '" ++ full_path ++ "'..."
+    copyFileLocal fmode target_path resource_dir filename
       
 createStructure target_path resource_dir _ _ _
-                (ResourcePatchFile fmode filename f) =
+                (ResourcePatchFile fmode filename f) = do
   let full_path = target_path </> filename
-   in ifNotExistsDo full_path $ do
-         putStrLn ("Creating file " ++ full_path ++ " ...")
-         cnt <- readFile (resource_dir </> filename)
-         let outfile = target_path </> filename
-         writeFile outfile (f cnt)
-         setFileMode fmode outfile
+  ifNotExistsDo full_path $ do
+    putStrLn ("Creating file '" ++ full_path ++ "'...")
+    cnt <- readFile (resource_dir </> filename)
+    let outfile = target_path </> filename
+    writeFile outfile (f cnt)
+    setFileMode fmode outfile
 
-createStructure target_path resource_dir erd term_path db_path
+createStructure target_path resource_dir erd termfile db_path
                 (Directory dirname subtree) = do
   let full_path = target_path </> dirname
-  ifNotExistsDo full_path (putStrLn ("Creating directory "++full_path++" ...")
-                           >> createDirectory full_path)
-  foldl (\a b -> a >> createStructure full_path resource_dir erd term_path db_path b)
-        done subtree
-      
-createStructure target_path _ erd term_path db_path
-                (GeneratedFromERD generatorFunction) = do
-  putStrLn $ "Generating from term file " ++ term_path ++ " ..."
-  generatorFunction term_path erd target_path db_path
+  ifNotExistsDo full_path $ do
+    putStrLn $ "Creating directory '"++full_path++"'..."
+    createDirectory full_path
+  mapIO_ (createStructure full_path resource_dir erd termfile db_path) subtree
+
+createStructure target_path _ erd termfile db_path
+                (GeneratedFromERD generatorFunction) =
+  generatorFunction termfile erd target_path db_path
 
 --- The main operation to start the scaffolding.
 main :: IO ()
