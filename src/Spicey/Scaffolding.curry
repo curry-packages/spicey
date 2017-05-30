@@ -8,12 +8,12 @@ import AbstractCurry.Types
 import AbstractCurry.Build
 import AbstractCurry.Pretty hiding(showCProg)
 import Database.ERD
-import Database.ERDGoodies
 import FilePath ( (</>) )
 import IO
 import System(system)
 
 import ERD2Curry ( erd2curryWithDBandERD )
+import Database.ERD.Goodies
 
 import Spicey.ControllerGeneration
 import Spicey.EntitiesToHtmlGeneration

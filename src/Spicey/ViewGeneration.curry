@@ -3,7 +3,7 @@ module Spicey.ViewGeneration where
 import AbstractCurry.Types
 import AbstractCurry.Build
 import Database.ERD
-import Database.ERDGoodies
+import Database.ERD.Goodies
 
 import Spicey.GenerationHelper
 
