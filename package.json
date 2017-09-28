@@ -5,7 +5,8 @@
     "synopsis": "A web application framework for Curry",
     "category": [ "Web", "Database" ],
     "dependencies": {
-        "ertools": ">= 1.0.0"
+        "abstract-curry": ">= 1.0.0",
+        "ertools"       : ">= 1.0.0"
     },
     "compilerCompatibility": {
         "pakcs": ">= 1.14.0, < 2.0.0",
