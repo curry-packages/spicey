@@ -23,6 +23,10 @@ upperFirst []     = [] -- this case should not occur, but one never knows...
 db :: String -> QName
 db f = ("Database.KeyDatabaseSQLite", f)
 
+--- Converts a string into a qualified name of the module "HTML.Base".
+html :: String -> QName
+html f = ("HTML.Base", f)
+
 --- Converts a string into a qualified name of the module "WUI".
 wui :: String -> QName
 wui f = ("WUI", f)
@@ -165,7 +169,7 @@ viewFunctionName entityName viewFunction =
   (viewModuleName entityName, viewFunction ++ entityName ++ "View")
 
 viewBlockType :: CTypeExpr
-viewBlockType = listType (baseType ("HTML","HtmlExp"))
+viewBlockType = listType (baseType (html "HtmlExp"))
 
 
 attrType :: Attribute -> CTypeExpr
@@ -292,7 +296,7 @@ widgetFor domain null =
     BoolDom _   -> addMaybe (constF (wui "wBoolean"))
     DateDom _   -> addMaybe (constF (spiceyModule, "wDateType"))
     UserDefined _ _ -> addMaybe (applyF (wui "wCheckBool")
-                                        [applyF ("HTML","htxt") [string2ac ""]])
+                                        [applyF (html "htxt") [string2ac ""]])
     KeyDom _    -> addMaybe (constF (wui "wInt"))
     _ -> error "widgetFor: unknown domain for attribute"
  where

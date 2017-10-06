@@ -5,7 +5,7 @@
 
 module System.Spicey (
   module System, 
-  module HTML, 
+  module HTML.Base, 
   module ReadNumeric, 
   Controller, applyControllerOn,
   nextController, nextControllerForData, confirmNextController,
@@ -26,13 +26,13 @@ module System.Spicey (
 
 import Char (isSpace,isDigit)
 import Global
-import HTML
 import Database.KeyDatabaseSQLite
 import ReadNumeric
 import ReadShowTerm(readsQTerm)
 import System
 import Time
 
+import HTML.Base
 import HTML.Styles.Bootstrap3
 import WUI
 

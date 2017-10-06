@@ -4,7 +4,7 @@
 
 module Main where
 
-import HTML
+import HTML.Base
 import WUI
 
 import Config.ControllerMapping

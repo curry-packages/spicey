@@ -13,7 +13,7 @@ module System.Session (
   getSessionData, putSessionData, removeSessionData
   ) where
 
-import HTML
+import HTML.Base
 import Time
 import Global
 import List

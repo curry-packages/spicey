@@ -4,7 +4,7 @@ module System.Authorization
   ( AccessType(..), AccessResult(..), checkAuthorization )
  where
 
-import HTML
+import HTML.Base
 import System.Spicey(Controller,displayError)
 import System.SessionInfo
 
