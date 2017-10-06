@@ -11,7 +11,7 @@ import Spicey.GenerationHelper
 generateToHtml :: String -> [Entity] -> [Relationship] -> CurryProg
 generateToHtml erdname allEntities relationships = CurryProg
   (entitiesToHtmlModule erdname)
-  ["WUI", "HTML", "Time", spiceyModule, erdname] -- imports
+  ["WUI", "HTML.Base", "Time", spiceyModule, erdname] -- imports
   [] -- typedecls
   -- functions
   (
@@ -42,7 +42,7 @@ toListView erdname (Entity entityName attrlist) _ _ =
    "This view is used in a row of a table of all entities.")
   (thisModuleName erdname, (lowerFirst entityName)++"ToListView") 2 Public
   (baseType (erdname, entityName)
-    ~> listType (listType (baseType ("HTML", "HtmlExp"))))
+    ~> listType (listType (baseType (html "HtmlExp"))))
   [simpleRule [CPVar (1, lowerFirst entityName)]
      (list2ac (
             (map (\a -> list2ac [
@@ -100,7 +100,7 @@ toDetailsView erdname (Entity entityName attrlist) relationships allEntities =
   2
   Public
   -- function type
-  (foldr CFuncType (listType (baseType ("HTML", "HtmlExp")))
+  (foldr CFuncType (listType (baseType (html "HtmlExp")))
          ([baseType (erdname, entityName)] ++
           (map ctvar manyToOneEntities) ++ -- defaults for n:1
           (map (\name -> listType (ctvar name)) manyToManyEntities)
@@ -137,14 +137,14 @@ toDetailsView erdname (Entity entityName attrlist) relationships allEntities =
                                          [CVar evar]]])
                  attrlist ++
              map (\ (name,varId) ->
-                    list2ac [applyF ("HTML","htxt")
+                    list2ac [applyF (html "htxt")
                                     [applyF (thisModuleName erdname,
                                              lowerFirst name ++ "ToShortView")
                                             [CVar (varId,"related"++name)]]])
                  (zip manyToOneEntities [2..]) ++
              map (\ (name,varId) ->
                     list2ac
-                      [applyF ("HTML","htxt")
+                      [applyF (html "htxt")
                               [applyF (pre "unwords")
                                 [applyF (pre "map")
                                   [applyF (thisModuleName erdname,
@@ -167,17 +167,17 @@ labelList erdname (Entity entityName attrlist) relationships allEntities =
     ("The labels of a "++entityName++" entity, as used in HTML tables.")
     (thisModuleName erdname, (lowerFirst entityName)++"LabelList") 2 Public
     (
-      listType (listType (CTCons ("HTML", "HtmlExp") []))
+      listType (listType (CTCons (html "HtmlExp") []))
     )
     [simpleRule []
       (list2ac (
             (map (\ (Attribute name domain _ _) ->
-                   list2ac [applyF ("HTML", "textstyle")
+                   list2ac [applyF (html "textstyle")
                                [string2ac ("spicey_label spicey_label_for_type_"++
                                            domainToString domain),
                                 string2ac name]])
                  attrlist) ++
-            (map (\s -> list2ac [applyF ("HTML", "textstyle")
+            (map (\s -> list2ac [applyF (html "textstyle")
                                   [string2ac "spicey_label spicey_label_for_type_relation",
                                    string2ac s]])
                  (manyToOneEntities++manyToManyEntities))

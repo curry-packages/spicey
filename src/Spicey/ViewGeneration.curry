@@ -16,7 +16,7 @@ generateViewsForEntity erdname allEntities
      noPKeyAttrs = filter notPKey attrlist
   in CurryProg
   (viewModuleName ename)
-  [ "WUI", "HTML", "Time", "Sort", bootstrapModule
+  [ "WUI", "HTML.Base", "Time", "Sort", bootstrapModule
   , spiceyModule, sessionInfoModule
   , erdname, entitiesToHtmlModule erdname] -- imports
   [] -- typedecls
@@ -75,7 +75,7 @@ wuiSpec erdname (Entity entityName attrlist) relationships allEntities =
                   applyF (wui "wMultiCheckSelect")
                    [CLambda [CPVar (1, lowerFirst e)]
                       (list2ac [
-                        applyF ("HTML", "htxt") [
+                        applyF (html "htxt") [
                          applyF (erdname, lowerFirst e++"ToShortView")
                                 [CVar (1, lowerFirst e)]
                          ]]),
@@ -459,7 +459,7 @@ showView erdname (Entity entityName attrlist) relationships allEntities =
                   ),
                list2ac [applyF hrefButtonName
                          [string2ac ("?"++entityName++"/list"),
-                          list2ac [applyF ("HTML","htxt")
+                          list2ac [applyF (html"htxt")
                             [string2ac ("back to "++entityName++" list")]]]]
               ]
             )]
@@ -485,8 +485,8 @@ listView erdname (Entity entityName attrlist) _ _ =
         [CPVar infovar, CPVar entsvar]
         (CSimpleRhs
           (applyF (pre ":") [
-              applyF ("HTML", "h1")
-                     [list2ac [applyF ("HTML", "htxt")
+              applyF (html "h1")
+                     [list2ac [applyF (html "htxt")
                                       [string2ac $ entityName ++ " list"]]],
               list2ac [
                 applyF (spiceyModule, "spTable") [
@@ -529,17 +529,17 @@ listView erdname (Entity entityName attrlist) _ _ =
                      [applyF hrefButtonName
                        [applyF (pre "++")
                          [string2ac ("?"++entityName++"/show/"),showkey],
-                        list2ac [applyF ("HTML","htxt") [string2ac "show"]]]],
+                        list2ac [applyF (html "htxt") [string2ac "show"]]]],
                     list2ac
                      [applyF hrefButtonName
                        [applyF (pre "++")
                          [string2ac ("?"++entityName++"/edit/"),showkey],
-                        list2ac [applyF ("HTML","htxt") [string2ac "edit"]]]],
+                        list2ac [applyF (html "htxt") [string2ac "edit"]]]],
                     list2ac
                      [applyF hrefButtonName
                        [applyF (pre "++")
                          [string2ac ("?"++entityName++"/delete/"),showkey],
-                        list2ac [applyF ("HTML","htxt") [string2ac "delete"]]]]
+                        list2ac [applyF (html "htxt") [string2ac "delete"]]]]
                 ]]
               ]
               )])

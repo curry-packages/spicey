@@ -27,7 +27,7 @@ generateControllersForEntity erdname allEntities
  CurryProg
   (controllerModuleName ename)
   -- imports:
-  [ spiceyModule, "KeyDatabaseSQLite", "HTML", "Time"
+  [ spiceyModule, "KeyDatabaseSQLite", "HTML.Base", "Time"
   , erdname, viewModuleName ename
   , "Maybe", sessionInfoModule, authorizationModule, enauthModName
   , "Config.UserProcesses",
@@ -368,9 +368,9 @@ deleteController erdname (Entity entityName _) _ _ =
         CLambda [CPVar (0,"_")] $
          applyF (spiceyModule,"confirmController")
          [list2ac
-           [applyF ("HTML","h3")
+           [applyF (html "h3")
              [list2ac
-               [applyF ("HTML","htxt")
+               [applyF (html "htxt")
                 [applyF (pre "concat")
                  [list2ac [string2ac "Really delete entity \"",
                            applyF (entitiesToHtmlModule erdname,

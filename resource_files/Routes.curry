@@ -7,7 +7,7 @@ module System.Routes
   ( getControllerReference, getRouteMenu )
  where
 
-import HTML
+import HTML.Base
 import Config.RoutesData
 
 --generated in RoutesData

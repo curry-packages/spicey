@@ -12,7 +12,7 @@ import Config.UserProcesses
 
 import AllSolutions
 import Global
-import HTML
+import HTML.Base
 import Maybe
 import ReadShowTerm
 
