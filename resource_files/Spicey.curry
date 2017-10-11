@@ -26,12 +26,12 @@ module System.Spicey (
 
 import Char (isSpace,isDigit)
 import Global
-import KeyDatabaseSQLite
 import ReadNumeric
 import ReadShowTerm(readsQTerm)
 import System
 import Time
 
+import Database.KeyDatabaseSQLite
 import HTML.Base
 import HTML.Styles.Bootstrap3
 import WUI

@@ -27,7 +27,7 @@ generateControllersForEntity erdname allEntities
  CurryProg
   (controllerModuleName ename)
   -- imports:
-  [ spiceyModule, "KeyDatabaseSQLite", "HTML.Base", "Time"
+  [ spiceyModule, "Database.KeyDatabaseSQLite", "HTML.Base", "Time"
   , erdname, viewModuleName ename
   , "Maybe", sessionInfoModule, authorizationModule, enauthModName
   , "Config.UserProcesses",
