@@ -10,7 +10,7 @@ WEBSERVERDIR = $(error "Define variable WEBSERVERDIR!")
 export CURRYBIN=XXXCURRYBINXXX
 
 # Executable of the Curry Package Manager CPM:
-CPM := $(CURRYBIN)/cpm
+CPM := $(CURRYBIN)/cypm
 
 # The root directory of the sources of the Spicey application:
 SRCDIR := $(CURDIR)/src

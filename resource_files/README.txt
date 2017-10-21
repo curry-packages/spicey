@@ -9,7 +9,7 @@ IMPORTANT NOTES:
        > make install
 
    to install all packages required by this application
-   (where the executable `cpm` of the Curry Package Manager should
+   (where the executable `cypm` of the Curry Package Manager should
    be in your path).
 
 2. Before you deploy your web application, you should
