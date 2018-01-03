@@ -49,7 +49,7 @@ run:
 .PHONY: deploy
 deploy:
 	mkdir -p $(WEBSERVERDIR)
-	$(CPM) exec $(CURRYBIN)/curry makecgi -standalone -m main -o $(WEBSERVERDIR)/spicey.cgi Main.curry
+	$(CPM) exec $(CURRYBIN)/curry makecgi -cpm -standalone -m main -o $(WEBSERVERDIR)/spicey.cgi Main.curry
 	# copy other files (style sheets, images,...)
 	cp -r public/* $(WEBSERVERDIR)
 	chmod -R go+rX $(WEBSERVERDIR)

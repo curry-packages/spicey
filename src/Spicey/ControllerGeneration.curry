@@ -95,18 +95,18 @@ mainController erdname (Entity entityName _) _ _ =
                       (constF (controllerFunctionName entityName "new")),
               cBranch (listPattern [stringPattern "show", CPVar (2,"s")])
                 (applyF (spiceyModule,"applyControllerOn")
-                  [applyF (erdname,"read"++entityName++"Key") [CVar (2,"s")],
-                   constF (erdname,"get"++entityName),
+                  [readKey,
+                   getEntityOp,
                    constF (controllerFunctionName entityName "show")]),
               cBranch (listPattern [stringPattern "edit", CPVar (2,"s")])
                 (applyF (spiceyModule,"applyControllerOn")
-                  [applyF (erdname,"read"++entityName++"Key") [CVar (2,"s")],
-                   constF (erdname,"get"++entityName),
+                  [readKey,
+                   getEntityOp,
                    constF (controllerFunctionName entityName "edit")]),
               cBranch (listPattern [stringPattern "delete", CPVar (2,"s")])
                 (applyF (spiceyModule,"applyControllerOn")
-                  [applyF (erdname,"read"++entityName++"Key") [CVar (2,"s")],
-                   constF (erdname,"get"++entityName),
+                  [readKey,
+                   getEntityOp,
                    constF (controllerFunctionName entityName "delete")]),
               cBranch (CPVar (3,"_"))
                  (applyF (spiceyModule, "displayError")
@@ -114,6 +114,11 @@ mainController erdname (Entity entityName _) _ _ =
           )
          ]
       )]
+ where
+  readKey     = applyF (erdname,"read"++entityName++"Key") [CVar (2,"s")]
+  getEntityOp = applyF (pre ".")
+                       [constF (db "runJustT"),
+                        constF (erdname,"get"++entityName)]
 
 -- generates a controller to show a form to create a new entity
 -- the input is then passed to the create controller
@@ -162,8 +167,9 @@ newController erdname (Entity entityName attrList) relationships allEntities =
                                 [2..]) ++
                       [CLambda [CPVar (200,"entity")]
                         (applyF (spiceyModule,"transactionController")
-                          [applyF (transFunctionName entityName "create")
-                                 [CVar (200,"entity")],
+                          [applyF (db "runT")
+                            [applyF (transFunctionName entityName "create")
+                                    [CVar (200,"entity")]],
                            applyF (spiceyModule,"nextInProcessOr")
                                   [callEntityListController entityName,
                                    constF (pre "Nothing")]]),
@@ -295,8 +301,9 @@ editController erdname (Entity entityName attrList) relationships allEntities =
                                  [1..])) ++
                       [CLambda [CPVar (200,"entity")]
                         (applyF (spiceyModule,"transactionController")
-                          [applyF (transFunctionName entityName "update")
-                                 [CVar (200,"entity")],
+                          [applyF (db "runT")
+                            [applyF (transFunctionName entityName "update")
+                                    [CVar (200,"entity")]],
                            applyF (spiceyModule,"nextInProcessOr")
                                   [callEntityListController entityName,
                                    constF (pre "Nothing")]]),
@@ -378,8 +385,9 @@ deleteController erdname (Entity entityName _) _ _ =
                                   [CVar entvar],
                            string2ac "\"?"]]]]]],
           applyF (spiceyModule,"transactionController")
-            [applyF (transFunctionName entityName "delete")
-                    [CVar entvar],
+            [applyF (db "runT")
+                    [applyF (transFunctionName entityName "delete")
+                            [CVar entvar]],
              constF (controllerFunctionName entityName "list")],
           applyF (controllerFunctionName entityName "show")
                  [CVar entvar]]])]

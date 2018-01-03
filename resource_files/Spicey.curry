@@ -59,11 +59,11 @@ type ViewBlock = [HtmlExp]
 type Controller = IO ViewBlock
 
 --- Reads an entity for a given key and applies a controller to it.
-applyControllerOn :: Maybe enkey -> (enkey -> Transaction en)
+applyControllerOn :: Maybe enkey -> (enkey -> IO en)
                   -> (en -> Controller) -> Controller
 applyControllerOn Nothing _ _ = displayError "Illegal URL"
 applyControllerOn (Just userkey) getuser usercontroller =
-  runJustT (getuser userkey) >>= usercontroller
+  getuser userkey >>= usercontroller
 
 nextController :: Controller -> _ -> IO HtmlForm
 nextController controller _ = do
@@ -99,9 +99,9 @@ confirmController question yescontroller nocontroller = do
 --- transaction error is shown.
 --- @param trans - the transaction to be executed
 --- @param controller - the controller executed in case of success
-transactionController :: (Transaction _) -> Controller -> Controller
+transactionController :: IO (Either _ TError) -> Controller -> Controller
 transactionController trans controller = do
-  transResult <- runT trans
+  transResult <- trans
   either (\_     -> controller)
          (\error -> displayError (showTError error))
          transResult
