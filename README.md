@@ -6,12 +6,14 @@ To generate an application, follow the steps below.
    which describes your entity-relationship model
    (see the file "examples/BlogERD.curry" as an example).
 
-2. Change to the directory in which you want to create the project.
+2. Since the imported module `Database.ERD` is part of the package `cdbi`,
+   this package must be installed, e.g., by the command
 
-3. From there execute `spiceup` and supply the name of the term file,
-   e.g.,
+       cypm add --dependency cdbi
+       
+3. Execute `spiceup` and supply the name of the Curry ERD program, e.g.,
 
-       spiceup .../BlogERD.curry
+       cypm exec spiceup .../BlogERD.curry
 
    This generates the complete source code of the initial application
    (see the generated file README.txt for some explanations).
@@ -19,7 +21,7 @@ To generate an application, follow the steps below.
    You can also provide a file name for the SQLite3 database in which
    all data is stored, e.g.,
 
-       spiceup --db BlogData.db .../Blog.erdterm
+       cypm exec spiceup --db BlogData.db .../Blog.erdterm
 
    If the parameter "--db ..." is not provided, then the name of database
    file is "<ERD>.db" where <ERD> is the name of the specified ER model.
