@@ -202,6 +202,6 @@ domainToString domain =
     CharDom   _     -> "char"
     StringDom _     -> "string"
     BoolDom   _     -> "bool"
-    DateDom   _     -> "calendarTime"
+    DateDom   _     -> "date"
     UserDefined _ _ -> "userDefined"
     KeyDom    _     -> "key"

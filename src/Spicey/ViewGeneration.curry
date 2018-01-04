@@ -356,7 +356,7 @@ blankView _ (Entity entityName attrlist) relationships allEntities =
   let
     manyToManyEntities = manyToMany allEntities (Entity entityName attrlist)
     manyToOneEntities  = manyToOne (Entity entityName attrlist) relationships
-    withCTime          = hasCalendarTimeAttribute attrlist
+    withCTime          = hasDateAttribute attrlist
     infovar            = (0, "sinfo")
   in
     viewFunction
@@ -366,7 +366,7 @@ blankView _ (Entity entityName attrlist) relationships allEntities =
       ( -- function type
        userSessionInfoType ~>
        foldr CFuncType viewBlockType (
-          (if withCTime then [baseType ("Time","CalendarTime")] else []) ++
+          (if withCTime then [baseType ("Time","ClockTime")] else []) ++
           (map (\e -> listType (ctvar e))
                (manyToOneEntities ++ manyToManyEntities)) ++ -- possible values
           [entityInterface attrlist manyToOneEntities manyToManyEntities

@@ -26,13 +26,14 @@ The directory structure of this package as follows
 src/Model/
   This directory contains the implementation of the data model, i.e.,
   it contains the Curry module <MODEL>.curry implementing the access
-  to the database which are generated from the ER description.  If you
-  want to add more complex integrity constraints on update operations,
-  you should extend the Curry code in this module.
-  In addition to the Curry programs, this directory also contains
+  to the database which are generated from the ER description.
+  In addition to the Curry program, this directory also contains
   the term files of the original and transformed ER description
-  (files `<MODEL>_ERD.term` and `<MODEL>_ERDT.term`) and the
-  Curry file of the original ER description (file `<MODEL>_ERD.curry`).
+  (files `<MODEL>_ERD.term` and `<MODEL>_ERDT.term`),
+  Curry file of the original ER description (file `<MODEL>_ERD.curry`),
+  and the info file `<MODEL>_SQLCode.info` which is used by
+  the Curry preprocessor when SQL queries are embedded in the source
+  code.
 
 src/Controller/
   This directory contains the implementation of the various

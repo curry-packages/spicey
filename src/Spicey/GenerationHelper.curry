@@ -20,9 +20,9 @@ upperFirst []     = [] -- this case should not occur, but one never knows...
 
 ------------------------------------------------------------------------
 --- Converts a string into a qualified name of the module
---- "Database.KeyDatabaseSQLite".
-db :: String -> QName
-db f = ("Database.KeyDatabaseSQLite", f)
+--- "Database.CDBI.Connection".
+dbconn :: String -> QName
+dbconn f = ("Database.CDBI.Connection", f)
 
 --- Converts a string into a qualified name of the module "HTML.Base".
 html :: String -> QName
@@ -181,7 +181,7 @@ attrType (Attribute _ t k False) =
             (FloatDom _)     -> ctvar "Float"
             (StringDom _ )   -> ctvar "String"
             (BoolDom _)      -> ctvar "Bool"
-            (DateDom _)      -> ctvar "CalendarTime"
+            (DateDom _)      -> ctvar "ClockTime"
             (UserDefined s _)-> ctvar s
             (KeyDom _)       -> ctvar "Key"
             _                -> ctvar "Int"
@@ -192,7 +192,7 @@ attrType (Attribute _ t k True) =
             (FloatDom _)     -> maybeType (ctvar "Float")
             (StringDom _ )   -> ctvar "String"
             (BoolDom _)      -> maybeType (ctvar "Bool")
-            (DateDom _)      -> maybeType (ctvar "CalendarTime")
+            (DateDom _)      -> maybeType (ctvar "ClockTime")
             (UserDefined s _)-> maybeType (ctvar s)
             (KeyDom _)       -> maybeType (ctvar "Key")
             _                -> maybeType (ctvar "Int")
@@ -217,8 +217,9 @@ attrDefaultValues defaultctime attrs = map defaultValue attrs
     BoolDom   (Just b) -> addJust (constF (pre (if b then "True" else "False")))
     DateDom   Nothing  -> nothingOrDefault
     DateDom   (Just (CalendarTime y mo d h m s tz))
-                       -> addJust (applyF ("Time", "CalendarTime")
-                                     (map (CLit . CIntc) [y,mo,d,h,m,s,tz]))
+                       -> addJust (applyF ("Time", "toClockTime")
+                                    [applyF ("Time", "CalendarTime")
+                                      (map (CLit . CIntc) [y,mo,d,h,m,s,tz])])
     UserDefined _ _    -> nothingOrDefault
     KeyDom _           -> nothingOrDefault
     _ -> error "GenerationHelper.attrDefaultValues: unknown domain for attribute"
@@ -253,10 +254,10 @@ isStringDom dom = case dom of
                    StringDom _ -> True
                    _           -> False
 
-hasCalendarTimeAttribute :: [Attribute] -> Bool
-hasCalendarTimeAttribute = any isCalendarTime
+hasDateAttribute :: [Attribute] -> Bool
+hasDateAttribute = any isDate
  where
-  isCalendarTime (Attribute _ domain _ _) = case domain of
+  isDate (Attribute _ domain _ _) = case domain of
     DateDom _   -> True
     _           -> False
 
@@ -306,7 +307,8 @@ widgetFor domain null =
     if null
      then applyF (spiceyModule,"wUncheckMaybe")
             [domainDefaultValue
-               (applyF ("Time", "CalendarTime")
-                       (map (CLit . CIntc) [2016,1,1,0,0,0,0]))
+               (applyF ("Time", "toClockTime")
+                 [applyF ("Time", "CalendarTime")
+                         (map (CLit . CIntc) [2018,1,1,0,0,0,0])])
                domain, e]
      else e

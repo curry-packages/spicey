@@ -27,7 +27,7 @@ generateControllersForEntity erdname allEntities
  simpleCurryProg
   (controllerModuleName ename)
   -- imports:
-  [ spiceyModule, "Database.KeyDatabaseSQLite", "HTML.Base", "Time"
+  [ spiceyModule, "HTML.Base", "Time"
   , erdname, viewModuleName ename
   , "Maybe", sessionInfoModule, authorizationModule, enauthModName
   , "Config.UserProcesses",
@@ -117,7 +117,7 @@ mainController erdname (Entity entityName _) _ _ =
  where
   readKey     = applyF (erdname,"read"++entityName++"Key") [CVar (2,"s")]
   getEntityOp = applyF (pre ".")
-                       [constF (db "runJustT"),
+                       [constF (erdname,"runJustT"),
                         constF (erdname,"get"++entityName)]
 
 -- generates a controller to show a form to create a new entity
@@ -128,8 +128,8 @@ newController erdname (Entity entityName attrList) relationships allEntities =
   let
     manyToManyEntities = manyToMany allEntities (Entity entityName attrList)
     manyToOneEntities  = manyToOne (Entity entityName attrList) relationships
-    withCTime          = hasCalendarTimeAttribute attrList
-    infovar            = (0, "sinfo")
+    withCTime          = hasDateAttribute attrList
+    infovar            = (0,"sinfo")
     ctimevar           = (1,"ctime")
   in
     controllerFunction 
@@ -147,14 +147,14 @@ newController erdname (Entity entityName attrList) relationships allEntities =
               (map 
                 (\ (ename, num) ->
                    CSPat (CPVar (num,"all"++ename++"s")) 
-                         (applyF (db "runQ")
+                         (applyF (erdname,"runQ")
                                  [constF (erdname,"queryAll"++ename++"s")])
                 )
                 (zip (manyToOneEntities ++ manyToManyEntities) [2..])
               ) ++
               (if withCTime
                then [CSPat (CPVar ctimevar)
-                           (constF ("Time","getLocalTime"))]
+                           (constF ("Time","getClockTime"))]
                else []) ++
               [         
                 CSExpr (
@@ -167,7 +167,7 @@ newController erdname (Entity entityName attrList) relationships allEntities =
                                 [2..]) ++
                       [CLambda [CPVar (200,"entity")]
                         (applyF (spiceyModule,"transactionController")
-                          [applyF (db "runT")
+                          [applyF (erdname,"runT")
                             [applyF (transFunctionName entityName "create")
                                     [CVar (200,"entity")]],
                            applyF (spiceyModule,"nextInProcessOr")
@@ -200,7 +200,7 @@ createTransaction erdname (Entity entityName attrList) relationships allEntities
       (tupleType (map attrType notGeneratedAttributes ++
                   map ctvar manyToOneEntities ++
                   map (listType . ctvar) manyToManyEntities)
-        ~> applyTC (db "Transaction") [baseType (pre "()")])
+        ~> applyTC (dbconn "DBAction") [baseType (pre "()")])
       [simpleRule 
         [tuplePattern
           (map (\ (param, varId) -> CPVar (varId, param)) 
@@ -208,8 +208,8 @@ createTransaction erdname (Entity entityName attrList) relationships allEntities
                      map (\e -> (lowerFirst e) ++ "s") manyToManyEntities)
                      [1..]))
         ] -- parameterlist for controller
-        (applyF (db "|>>")
-           [foldr1 (\a b -> applyF (db "|>>=") [a,b])
+        (applyF (dbconn ">+")
+           [foldr1 (\a b -> applyF (dbconn ">+=") [a,b])
               ([applyF (entityConstructorFunction erdname (Entity entityName attrList) relationships) 
                        (map (\ ((Attribute name dom key null), varId) -> 
                           if (isForeignKey (Attribute name dom key null))
@@ -224,7 +224,7 @@ createTransaction erdname (Entity entityName attrList) relationships allEntities
                         )
                      ] ++ (map (\name -> applyF (controllerModuleName entityName, "add"++(linkTableName entityName name allEntities)) [cvar ((lowerFirst name)++"s")]) manyToManyEntities)
                     ),
-            applyF (db "returnT") [constF (pre "()")]]
+            applyF (dbconn "ok") [constF (pre "()")]]
            )]
       
 editController :: ControllerGenerator
@@ -250,7 +250,7 @@ editController erdname (Entity entityName attrList) relationships allEntities =
               (map 
                 (\ (ename, num) ->
                       CSPat (CPVar (num,"all"++ename++"s")) 
-                            (applyF (db "runQ")
+                            (applyF (erdname,"runQ")
                                     [constF (erdname,"queryAll"++ename++"s")])
                 )
                 (zip (manyToOneEntities ++ manyToManyEntities) [1..])
@@ -258,7 +258,7 @@ editController erdname (Entity entityName attrList) relationships allEntities =
               (map 
                 (\ (ename, num) -> CSPat (CPVar (num,(lowerFirst (fst $ relationshipName entityName ename relationships))++ename)) 
                                 (
-                                  applyF (db "runJustT") [
+                                  applyF (erdname,"runJustT") [
                                     applyF (controllerModuleName entityName,"get"++(fst $ relationshipName entityName ename relationships)++ename) [CVar pvar]
                                   ]
                                 )
@@ -268,7 +268,7 @@ editController erdname (Entity entityName attrList) relationships allEntities =
               (map 
                 (\ (ename, num) -> CSPat (CPVar (num,(lowerFirst (linkTableName entityName ename allEntities))++ename++"s")) 
                                 (
-                                  applyF (db "runJustT") [
+                                  applyF (erdname,"runJustT") [
                                     applyF (controllerModuleName entityName,"get"++entityName++ename++"s") [CVar pvar]
                                   ]
                                 )
@@ -301,7 +301,7 @@ editController erdname (Entity entityName attrList) relationships allEntities =
                                  [1..])) ++
                       [CLambda [CPVar (200,"entity")]
                         (applyF (spiceyModule,"transactionController")
-                          [applyF (db "runT")
+                          [applyF (erdname,"runT")
                             [applyF (transFunctionName entityName "update")
                                     [CVar (200,"entity")]],
                            applyF (spiceyModule,"nextInProcessOr")
@@ -330,7 +330,7 @@ updateTransaction erdname (Entity entityName attrList) _ allEntities =
     2 Private
       (tupleType ([baseType (erdname, entityName)] ++
                    map (\name -> listType (ctvar name)) manyToManyEntities)
-        ~> applyTC (db "Transaction") [baseType (pre "()")]
+        ~> applyTC (dbconn "DBAction") [baseType (pre "()")]
       )
       [simpleRule 
         [tuplePattern
@@ -341,11 +341,11 @@ updateTransaction erdname (Entity entityName attrList) _ allEntities =
                                manyToManyEntities)
                           [1..])))
         ] -- parameter list for controller
-        (foldr1 (\a b -> applyF (db "|>>") [a,b])
+        (foldr1 (\a b -> applyF (dbconn ">+") [a,b])
                   ([applyF (erdname, "update"++entityName)
                            [cvar (lowerFirst entityName)]] ++ 
                    (map  (\name -> 
-                            applyF (db "|>>=") [
+                            applyF (dbconn ">+=") [
                               applyF (controllerModuleName entityName,"get"++entityName++name++"s") [cvar (lowerFirst entityName)],
                               CLambda [CPVar(0, "old"++(linkTableName entityName name allEntities)++name++"s")] (applyF (controllerModuleName entityName, "remove"++(linkTableName entityName name allEntities)) [cvar ("old"++(linkTableName entityName name allEntities)++name++"s"), cvar (lowerFirst entityName)])
                             ]
@@ -385,7 +385,7 @@ deleteController erdname (Entity entityName _) _ _ =
                                   [CVar entvar],
                            string2ac "\"?"]]]]]],
           applyF (spiceyModule,"transactionController")
-            [applyF (db "runT")
+            [applyF (erdname,"runT")
                     [applyF (transFunctionName entityName "delete")
                             [CVar entvar]],
              constF (controllerFunctionName entityName "list")],
@@ -404,12 +404,12 @@ deleteTransaction erdname (Entity entityName attrList) _ allEntities =
     (transFunctionName entityName "delete")
     1 Private
     (baseType (erdname, entityName) ~>
-                     applyTC (db "Transaction") [baseType (pre "()")])
+                     applyTC (dbconn "DBAction") [baseType (pre "()")])
     [simpleRule 
       [CPVar entvar] -- entity parameter for controller
-      (foldr1 (\a b -> applyF (db "|>>") [a,b])
+      (foldr1 (\a b -> applyF (dbconn ">+") [a,b])
            (map (\name ->
-                  applyF (db "|>>=")
+                  applyF (dbconn ">+=")
                          [applyF (controllerModuleName entityName,
                                   "get"++entityName++name++"s")
                                  [CVar entvar],
@@ -441,7 +441,7 @@ listController erdname (Entity entityName _) _ _ =
              CLambda [CPVar infovar] $
               CDoExpr (            
               [CSPat (CPVar entsvar)
-                     (applyF (db "runQ")
+                     (applyF (erdname,"runQ")
                              [constF (erdname,"queryAll"++entityName++"s")]),
                CSExpr (applyF (pre "return")
                              [applyF (viewFunctionName entityName "list")
@@ -474,7 +474,7 @@ showController erdname (Entity entityName attrList) relationships allEntities =
                      CSPat (CPVar (num,lowerFirst
                                          (fst $ relationshipName entityName
                                                ename relationships) ++ ename)) 
-                           (applyF (db "runJustT")
+                           (applyF (erdname,"runJustT")
                               [applyF (controllerModuleName entityName,
                                        "get"++ fst (relationshipName
                                                 entityName ename relationships)
@@ -488,7 +488,7 @@ showController erdname (Entity entityName attrList) relationships allEntities =
                       CSPat (CPVar (num,lowerFirst (linkTableName entityName
                                                            ename allEntities)
                                         ++ename++"s"))
-                            (applyF (db "runJustT")
+                            (applyF (erdname,"runJustT")
                                [applyF (controllerModuleName entityName,
                                         "get"++entityName++ename++"s")
                                        [CVar pvar]])
@@ -535,10 +535,10 @@ manyToManyAddOrRemove erdname (Entity entityName _) entities allEntities =
       (controllerModuleName e1, funcPrefix++(linkTableName e1 e2 allEntities))
       2 
       Private
-      (listType (ctvar e2) ~> ctvar e1 ~> applyTC (db "Transaction")
+      (listType (ctvar e2) ~> ctvar e1 ~> applyTC (dbconn "DBAction")
                                                  [tupleType []])
       [simpleRule [CPVar (0, (lowerFirst e2)++"s"), CPVar (1, (lowerFirst e1))]
-        (applyF (db "mapT_")
+        (applyF (dbconn "mapDBAction_")
            [CLambda [CPVar(2, "t")]
              (applyF (erdname, dbFuncPrefix++(linkTableName e1 e2 allEntities))
                [applyF (erdname, (lowerFirst e1)++"Key") [cvar (lowerFirst e1)],
@@ -558,8 +558,8 @@ getAll erdname (Entity entityName _) entities _ =
       Private
       (ioType (listType (ctvar foreignEntity)))
       [simpleRule []
-        (applyF (db "runQ")
-          [applyF (db "queryAll")
+        (applyF (erdname,"runQ")
+          [applyF (erdname,"queryAll")
             [CLambda [CPVar(0, take 1 (lowerFirst foreignEntity) )]
                      (CLetDecl [(CLocalVars [(1,"key")])]
                         (applyF (erdname, lowerFirst foreignEntity)
@@ -581,9 +581,10 @@ manyToManyGetRelated erdname (Entity entityName _) entities allEntities =
       (controllerModuleName entityName, "get"++(linkTableName entityName foreignEntity allEntities)++foreignEntity++"s")
       0
       Private
-      (ctvar entityName ~> applyTC (db "Query") [listType (ctvar foreignEntity)])
+      (ctvar entityName ~> applyTC (dbconn "DBAction")
+                                   [listType (ctvar foreignEntity)])
       [simpleRule [CPVar (1, (take 1 $ lowerFirst entityName)++foreignEntity)]
-        (applyF (db "queryAll")
+        (applyF (erdname,"queryAll")
           [CLambda [CPVar(0, take 1 (lowerFirst foreignEntity) )] 
             (CLetDecl
                [CLocalVars [(1,(take 1 $ lowerFirst entityName)++"key"),
@@ -618,7 +619,7 @@ manyToOneGetRelated erdname (Entity entityName _) entities _ relationships =
        "get"++rname++foreignEntity)
       0
       Private
-      ((ctvar entityName) ~> applyTC (db "Transaction") [ctvar foreignEntity])
+      ((ctvar entityName) ~> applyTC (dbconn "DBAction") [ctvar foreignEntity])
       [simpleRule [CPVar argvar]
                   (applyF (erdname,"get"++foreignEntity)
                           [applyF (erdname,fkeysel) [CVar argvar]])]

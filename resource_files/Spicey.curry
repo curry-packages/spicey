@@ -17,7 +17,7 @@ module System.Spicey (
   nextInProcessOr,
   stringToHtml, maybeStringToHtml,
   intToHtml,maybeIntToHtml, floatToHtml, maybeFloatToHtml,
-  boolToHtml, maybeBoolToHtml, calendarTimeToHtml, maybeCalendarTimeToHtml,
+  boolToHtml, maybeBoolToHtml, dateToHtml, maybeDateToHtml,
   userDefinedToHtml, maybeUserDefinedToHtml,
   spTable,
   setPageMessage, getPageMessage,
@@ -31,7 +31,7 @@ import ReadShowTerm(readsQTerm)
 import System
 import Time
 
-import Database.KeyDatabaseSQLite
+import Database.CDBI.Connection ( SQLResult )
 import HTML.Base
 import HTML.Styles.Bootstrap3
 import WUI
@@ -99,11 +99,11 @@ confirmController question yescontroller nocontroller = do
 --- transaction error is shown.
 --- @param trans - the transaction to be executed
 --- @param controller - the controller executed in case of success
-transactionController :: IO (Either _ TError) -> Controller -> Controller
+transactionController :: IO (SQLResult _) -> Controller -> Controller
 transactionController trans controller = do
   transResult <- trans
-  either (\_     -> controller)
-         (\error -> displayError (showTError error))
+  either (\error -> displayError (show error))
+         (\_     -> controller)
          transResult
 
 --- If we are in a process, execute the next process depending on
@@ -178,14 +178,16 @@ renderWuiForm wuispec initdata controller cancelcontroller title buttontag =
 
 --- A WUI for manipulating CalendarTime entities.
 --- It is based on a WUI for dates, i.e., the time is ignored.
-wDateType :: WuiSpec CalendarTime
+wDateType :: WuiSpec ClockTime
 wDateType = transformWSpec (tuple2date,date2tuple) wDate
  where
-  tuple2date :: (Int, Int, Int) -> CalendarTime
-  tuple2date (day, month, year) = CalendarTime year month day 0 0 0 0
+  tuple2date :: (Int, Int, Int) -> ClockTime
+  tuple2date (day, month, year) =
+    toClockTime (CalendarTime year month day 0 0 0 0)
 
-  date2tuple :: CalendarTime -> (Int, Int, Int)
-  date2tuple( CalendarTime year month day _ _ _ _) = (day, month, year)
+  date2tuple :: ClockTime -> (Int, Int, Int)
+  date2tuple ct = let CalendarTime year month day _ _ _ _ = toUTCTime ct
+                  in (day, month, year)
 
 --- A WUI for manipulating date entities.
 wDate :: WuiSpec (Int, Int, Int)
@@ -332,12 +334,12 @@ boolToHtml b = textstyle "type_bool" (show b)
 maybeBoolToHtml :: Maybe Bool -> HtmlExp
 maybeBoolToHtml b = textstyle "type_bool" (maybe "" show b)
 
-calendarTimeToHtml :: CalendarTime -> HtmlExp
-calendarTimeToHtml ct = textstyle "type_calendartime" (toDayString ct)
+dateToHtml :: ClockTime -> HtmlExp
+dateToHtml ct = textstyle "type_calendartime" (toDayString (toUTCTime ct))
 
-maybeCalendarTimeToHtml :: Maybe CalendarTime -> HtmlExp
-maybeCalendarTimeToHtml ct =
-  textstyle "type_calendartime" (maybe "" toDayString ct)
+maybeDateToHtml :: Maybe ClockTime -> HtmlExp
+maybeDateToHtml ct =
+  textstyle "type_calendartime" (maybe "" (toDayString . toUTCTime) ct)
 
 userDefinedToHtml :: Show a => a -> HtmlExp
 userDefinedToHtml ud = textstyle "type_string" (show ud)

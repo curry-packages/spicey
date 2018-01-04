@@ -12,7 +12,7 @@ import FilePath ( (</>) )
 import IO
 import System(system)
 
-import ERD2Curry ( erd2curryWithDBandERD )
+import ERD2Curry ( erd2cdbiWithDBandERD )
 import Database.ERD.Goodies
 
 import Spicey.ControllerGeneration
@@ -86,13 +86,15 @@ createHtmlHelpers _ (ERD name entities relationship) path _ =
 -- uses Curry's ertools for ERD to Curry transformation
 createModels :: String -> ERD -> String -> String -> IO ()
 createModels term_path erd path db_path = do
-  let dbfile = if null db_path then erdName erd ++ ".db"
+  let erdname = erdName erd
+      dbfile = if null db_path then erdname ++ ".db"
                                else db_path
-  erd2curryWithDBandERD dbfile term_path
-  let orgerdfile   = erdName erd ++ "_ERD.term"
-      transerdfile = erdName erd ++ "_ERDT.term"
-      curryfile    = erdName erd ++ ".curry"
-  system $ unwords ["mv", transerdfile, curryfile, "ERDGeneric.curry", path]
+  erd2cdbiWithDBandERD dbfile term_path
+  let orgerdfile   = erdname ++ "_ERD.term"
+      transerdfile = erdname ++ "_ERDT.term"
+      curryfile    = erdname ++ ".curry"
+      infofile     = erdname ++ "_SQLCode.info"
+  system $ unwords ["mv", transerdfile, curryfile, infofile, path]
   system $ unwords ["cp", term_path, path </> orgerdfile]
   done
 

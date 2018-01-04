@@ -1,4 +1,5 @@
-Welcome to the Spicey web application framework!
+The Spicey Web Application Framework
+====================================
 
 To generate an application, follow the steps below.
 
@@ -36,3 +37,8 @@ To generate an application, follow the steps below.
 
 6. After the successful compilation, the application is executable
    in a web browser by loading `<URL of web dir>/spicey.cgi`.
+
+Note that the database is generated with the `cdbi` package.
+Hence, one can also use embedded SQL statements when further developing
+the Curry code. The syntax and use of such embedded SQL statements
+is described in the Curry preprocessor.
