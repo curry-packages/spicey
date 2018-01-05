@@ -396,6 +396,8 @@ blankView _ (Entity entityName attrlist) relationships allEntities =
           )]
 
 -- Generate function to compare to entities in lexicographic order.
+-- To avoid useless component comparisons, only the first five non-key
+-- attributes are used for the comparison.
 leqEntity :: ViewGenerator
 leqEntity erdname (Entity entityName attrlist) _ _ =
   stCmtFunc
@@ -410,10 +412,10 @@ leqEntity erdname (Entity entityName attrlist) _ _ =
            (applyF (pre "<=")
                    [tupleExpr (map (\ (Attribute a _ _ _) ->
                                        applyF (erdname,ename++a) [CVar e1])
-                                   (filter notKey attrlist)),
+                                   (take 5 (filter notKey attrlist))),
                     tupleExpr (map (\ (Attribute a _ _ _) ->
                                        applyF (erdname,ename++a) [CVar e2])
-                                   (filter notKey attrlist))
+                                   (take 5 (filter notKey attrlist)))
                    ])]
 
 
