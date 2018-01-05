@@ -21,6 +21,10 @@
         "src-dir": "examples",
         "modules": [ "TestSpicey" ]
     },
+    "documentation": {
+        "src-dir": "docs",
+        "main": "main.tex"
+    },
     "source": {
         "git": "https://git.ps.informatik.uni-kiel.de/curry-packages/spicey.git",
         "tag": "$version"

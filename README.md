@@ -30,12 +30,17 @@ To generate an application, follow the steps below.
    a relative file name will be relative to the place where
    the cgi programs are stored.
 
-4. Compile the generated programs by `make compile`.
+4. Change into the generated directory containing all sources as a
+   Curry package, e.g., by `cd Blog`.
 
-5. Configure the Makefile (variable WEBSERVERDIR) and execute
+5. Install all required packages by `make install`.
+
+6. Compile the generated programs by `make compile`.
+
+7. Configure the Makefile (variable WEBSERVERDIR) and execute
    `make deploy` to deploy the web application.
 
-6. After the successful compilation, the application is executable
+8. After the successful compilation, the application is executable
    in a web browser by loading `<URL of web dir>/spicey.cgi`.
 
 Note that the database is generated with the `cdbi` package.
