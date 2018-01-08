@@ -8,6 +8,7 @@ import AbstractCurry.Types
 import AbstractCurry.Build
 import AbstractCurry.Pretty hiding(showCProg)
 import Database.ERD
+import Directory
 import FilePath ( (</>) )
 import IO
 import System(system)
@@ -83,20 +84,17 @@ createHtmlHelpers _ (ERD name entities relationship) path _ =
     hPutStr fileh (showCProg (generateToHtml erdname allEntities relationships))
     hClose fileh
 
--- uses Curry's ertools for ERD to Curry transformation
+-- Uses Curry's `ertools` for ERD to Curry transformation
 createModels :: String -> ERD -> String -> String -> IO ()
 createModels term_path erd path db_path = do
   let erdname = erdName erd
       dbfile = if null db_path then erdname ++ ".db"
                                else db_path
+  aterm_path <- getAbsolutePath term_path
+  curdir <- getCurrentDirectory
+  setCurrentDirectory path
   erd2cdbiWithDBandERD dbfile term_path
-  let orgerdfile   = erdname ++ "_ERD.term"
-      transerdfile = erdname ++ "_ERDT.term"
-      curryfile    = erdname ++ ".curry"
-      infofile     = erdname ++ "_SQLCode.info"
-  system $ unwords ["mv", transerdfile, curryfile, infofile, path]
-  system $ unwords ["cp", term_path, path </> orgerdfile]
-  done
+  setCurrentDirectory curdir
 
 createRoutes :: String -> ERD -> String -> String -> IO ()
 createRoutes _ erd path _ = do

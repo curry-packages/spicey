@@ -79,6 +79,9 @@ a relative database file name will be relative to the place where
 the web programs are stored.
 In order to avoid such confusion, it might be better to specify
 an absolute path name for the database file.
+This path could also be set in the definition of the constant
+\code{sqliteDBFile} in the generated Curry program
+\code{Model/$ERD$.curry}.
 
 Spicey generates the web application as a Curry package in a new
 directory. Thus, change into this directory (e.g., \code{cd $ERD$})

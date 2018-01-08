@@ -28,9 +28,8 @@ src/Model/
   it contains the Curry module <MODEL>.curry implementing the access
   to the database which are generated from the ER description.
   In addition to the Curry program, this directory also contains
-  the term files of the original and transformed ER description
-  (files `<MODEL>_ERD.term` and `<MODEL>_ERDT.term`),
-  Curry file of the original ER description (file `<MODEL>_ERD.curry`),
+  the Curry file of the original ER description (file `<MODEL>_ERD.curry`),
+  the term files of the transformed ER description (`<MODEL>_ERDT.term`),
   and the info file `<MODEL>_SQLCode.info` which is used by
   the Curry preprocessor when SQL queries are embedded in the source
   code.

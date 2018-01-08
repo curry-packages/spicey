@@ -28,7 +28,11 @@ To generate an application, follow the steps below.
    file is "<ERD>.db" where <ERD> is the name of the specified ER model.
    Since this file name will be used in the _generated_ cgi programs,
    a relative file name will be relative to the place where
-   the cgi programs are stored.
+   the cgi programs are stored. In order to avoid confusion due to
+   relative file names, it might be better to specify
+   an absolute path name for the database file.
+   This path could also be set in the definition of the constant
+   `sqliteDBFile` in the generated Curry program `Model/<ERD>.curry`.
 
 4. Change into the generated directory containing all sources as a
    Curry package, e.g., by `cd Blog`.
