@@ -5,6 +5,7 @@
     "synopsis": "A web application framework for Curry",
     "category": [ "Web", "Database" ],
     "dependencies": {
+        "base"          : ">= 1.0.0, < 2.0.0",
         "abstract-curry": ">= 2.0.0",
         "ertools"       : ">= 2.0.0"
     },

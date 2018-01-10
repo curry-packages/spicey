@@ -224,9 +224,9 @@ createTransaction erdname (Entity entityName attrList) relationships allEntities
                         )
                      ] ++ (map (\name -> applyF (controllerModuleName entityName, "add"++(linkTableName entityName name allEntities)) [cvar ((lowerFirst name)++"s")]) manyToManyEntities)
                     ),
-            applyF (dbconn "ok") [constF (pre "()")]]
+            applyF (pre "return") [constF (pre "()")]]
            )]
-      
+
 editController :: ControllerGenerator
 editController erdname (Entity entityName attrList) relationships allEntities =
   let
@@ -538,7 +538,7 @@ manyToManyAddOrRemove erdname (Entity entityName _) entities allEntities =
       (listType (ctvar e2) ~> ctvar e1 ~> applyTC (dbconn "DBAction")
                                                  [tupleType []])
       [simpleRule [CPVar (0, (lowerFirst e2)++"s"), CPVar (1, (lowerFirst e1))]
-        (applyF (dbconn "mapDBAction_")
+        (applyF (pre "mapM_")
            [CLambda [CPVar(2, "t")]
              (applyF (erdname, dbFuncPrefix++(linkTableName e1 e2 allEntities))
                [applyF (erdname, (lowerFirst e1)++"Key") [cvar (lowerFirst e1)],
