@@ -4,17 +4,13 @@ The Spicey Web Application Framework
 To generate an application, follow the steps below.
 
 1. Create a Curry program containing a constant of type `Database.ERD.ERD`
+   (the module `Database.ERD` is part of the package `cdbi`)
    which describes your entity-relationship model
    (see the file "examples/BlogERD.curry" as an example).
 
-2. Since the imported module `Database.ERD` is part of the package `cdbi`,
-   this package must be installed, e.g., by the command
+2. Execute `spiceup` and supply the name of the Curry ERD program, e.g.,
 
-       cypm add --dependency cdbi
-       
-3. Execute `spiceup` and supply the name of the Curry ERD program, e.g.,
-
-       cypm exec spiceup .../BlogERD.curry
+       spiceup .../BlogERD.curry
 
    This generates the complete source code of the initial application
    (see the generated file README.txt for some explanations).
@@ -22,7 +18,7 @@ To generate an application, follow the steps below.
    You can also provide a file name for the SQLite3 database in which
    all data is stored, e.g.,
 
-       cypm exec spiceup --db BlogData.db .../Blog.erdterm
+       spiceup --db BlogData.db .../Blog.erdterm
 
    If the parameter "--db ..." is not provided, then the name of database
    file is "<ERD>.db" where <ERD> is the name of the specified ER model.
@@ -34,17 +30,17 @@ To generate an application, follow the steps below.
    This path could also be set in the definition of the constant
    `sqliteDBFile` in the generated Curry program `Model/<ERD>.curry`.
 
-4. Change into the generated directory containing all sources as a
+3. Change into the generated directory containing all sources as a
    Curry package, e.g., by `cd Blog`.
 
-5. Install all required packages by `make install`.
+4. Install all required packages by `make install`.
 
-6. Compile the generated programs by `make compile`.
+5. Compile the generated programs by `make compile`.
 
-7. Configure the Makefile (variable WEBSERVERDIR) and execute
+6. Configure the Makefile (variable WEBSERVERDIR) and execute
    `make deploy` to deploy the web application.
 
-8. After the successful compilation, the application is executable
+7. After the successful compilation, the application is executable
    in a web browser by loading `<URL of web dir>/spicey.cgi`.
 
 Note that the database is generated with the `cdbi` package.

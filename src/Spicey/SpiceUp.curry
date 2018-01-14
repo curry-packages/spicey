@@ -2,21 +2,21 @@
 
 module Spicey.SpiceUp where
 
-import Database.ERD         (ERD, readERDTermFile)
-import Database.ERD.Goodies (erdName, storeERDFromProgram)
+import Database.ERD         ( ERD, readERDTermFile )
+import Database.ERD.Goodies ( erdName, storeERDFromProgram )
 import Directory
 import Distribution
-import FilePath             ((</>))
-import List                 (isSuffixOf, last)
-import System               (system, getArgs, exitWith)
+import FilePath             ( (</>) )
+import List                 ( isSuffixOf, last )
+import System               ( setEnviron, system, getArgs, exitWith )
 
-import Spicey.PackageConfig (packagePath, packageVersion)
+import Spicey.PackageConfig ( packagePath, packageVersion, packageLoadPath )
 import Spicey.Scaffolding
 
 systemBanner :: String
 systemBanner =
   let bannerText = "Spicey Web Framework (Version " ++ packageVersion ++
-                   " of 08/01/18)"
+                   " of 14/01/18)"
       bannerLine = take (length bannerText) (repeat '-')
    in bannerLine ++ "\n" ++ bannerText ++ "\n" ++ bannerLine
 
@@ -173,6 +173,8 @@ main = do
     _ -> putStrLn ("Wrong arguments!\n") >> spiceupHelp 1
  where
   createStructureWith orgfile dbfile = do
+    -- set CURRYPATH in order to compile ERD model (which requires Database.ERD)
+    unless (null packageLoadPath) $ setEnviron "CURRYPATH" packageLoadPath
     -- The directory containing the project generator:
     let resourcedir = packagePath </> "resource_files"
     exfile <- doesFileExist orgfile
