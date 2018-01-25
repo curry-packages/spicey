@@ -5,7 +5,7 @@
 --- and a view of a list of user processes.
 --------------------------------------------------------------------------
 
-module View.SpiceySystemView
+module View.SpiceySystem
   ( loginView, processListView, historyView )
  where
 

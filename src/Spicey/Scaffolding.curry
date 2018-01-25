@@ -71,6 +71,12 @@ createControllers _ (ERD name entities relationship) path _ = do
               (showCProg (generateControllersForEntity erdname allEntities
                             (Entity ename attrlist) relationships))
 
+createAuthorizations :: String -> ERD -> String -> String -> IO ()
+createAuthorizations _ (ERD name entities _) path _ = do
+  let targetfile = path </> "AuthorizedActions.curry"
+  putStrLn $ "Generating default action authorization '" ++ targetfile ++ "'..."
+  writeFile targetfile (showCProg (generateAuthorizations name entities))
+
 createHtmlHelpers :: String -> ERD -> String -> String -> IO ()
 createHtmlHelpers _ (ERD name entities relationship) path _ =
   saveToHtml name (getEntities erdt) (getRelationships erdt)
@@ -106,5 +112,45 @@ createRoutes _ erd path _ = do
   dmfileh <- openFile (path </> "RoutesData.curry") WriteMode
   hPutStr dmfileh (showCProg (generateStartpointDataForERD erd))
   hClose dmfileh
+
+------------------------------------------------------------------------
+-- Generate all default authorizations.
+generateAuthorizations :: String -> [Entity] -> CurryProg
+generateAuthorizations erdname entities = simpleCurryProg
+  enauthModName
+  [authorizationModule, sessionInfoModule, erdname] -- imports
+  [] -- typedecls
+  -- functions
+  (map operationAllowed entities)
+  [] -- opdecls
+ where
+  operationAllowed (Entity entityName _) =
+   stCmtFunc
+    ("Checks whether the application of an operation to a "++entityName++"\n"++
+     "entity is allowed.")
+    (enauthModName, lowerFirst entityName ++ "OperationAllowed")
+    1
+    Public
+    (applyTC (authorizationModule,"AccessType") [baseType (erdname,entityName)]
+     ~> baseType (sessionInfoModule,"UserSessionInfo")
+     ~> ioType (baseType (authorizationModule,"AccessResult")))
+    [simpleRule [CPVar (1,"at"), CPVar (2,"_")]
+     (CCase CRigid (CVar (1,"at"))
+       [cBranch (CPComb (authorizationModule,"ListEntities") []) allowed,
+        cBranch (CPComb (authorizationModule,"NewEntity")    []) allowed,
+        cBranch (CPComb (authorizationModule,"ShowEntity")   [CPVar (3,"_")])
+                allowed,
+        cBranch (CPComb (authorizationModule,"DeleteEntity") [CPVar (3,"_")])
+                allowed,
+        cBranch (CPComb (authorizationModule,"UpdateEntity") [CPVar (3,"_")])
+                allowed])]
+
+  -- Expression implemented access allowed
+  allowed = applyF (pre "return") [constF (authorizationModule,"AccessGranted")]
+
+  -- Expression implemented access denied
+  --exprDenied = applyF (pre "return")
+  --                    [applyF (authorizationModule,"AccessDenied")
+  --                            [string2ac "Operation not allowed!"]]
 
 ------------------------------------------------------------------------

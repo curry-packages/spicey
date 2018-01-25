@@ -12,7 +12,7 @@ import Spicey.GenerationHelper
 
 -- Name of entity-specific authorization module:
 enauthModName :: String
-enauthModName = "Controller.AuthorizedControllers"
+enauthModName = "System.AuthorizedActions"
 
 -- Name of module defining the default controller:
 defCtrlModName :: String
@@ -730,43 +730,6 @@ generateDefaultController _ (Entity ename _:_) = simpleCurryProg
        (constF (controllerModuleName ename, "main"++ename++"Controller"))]
   ]
   [] -- opdecls
-
-------------------------------------------------------------------------
--- Generate all default authorizations.
-generateAuthorizations :: String -> [Entity] -> CurryProg
-generateAuthorizations erdname entities = simpleCurryProg
-  enauthModName
-  [authorizationModule, sessionInfoModule, erdname] -- imports
-  [] -- typedecls
-  -- functions
-  (map operationAllowed entities)
-  [] -- opdecls
- where
-  operationAllowed (Entity entityName _) =
-   stCmtFunc
-    ("Checks whether the application of an operation to a "++entityName++"\n"++
-     "entity is allowed.")
-    (enauthModName, lowerFirst entityName ++ "OperationAllowed")
-    1
-    Public
-    (applyTC (authorizationModule,"AccessType") [baseType (erdname,entityName)]
-     ~> baseType (sessionInfoModule,"UserSessionInfo")
-     ~> ioType (baseType (authorizationModule,"AccessResult")))
-    [simpleRule [CPVar (1,"at"), CPVar (2,"_")]
-     (CCase CRigid (CVar (1,"at"))
-       [cBranch (CPComb (authorizationModule,"ListEntities") []) allowed,
-        cBranch (CPComb (authorizationModule,"NewEntity")    []) allowed,
-        cBranch (CPComb (authorizationModule,"ShowEntity")   [CPVar (3,"_")]) allowed,
-        cBranch (CPComb (authorizationModule,"DeleteEntity") [CPVar (3,"_")]) allowed,
-        cBranch (CPComb (authorizationModule,"UpdateEntity") [CPVar (3,"_")]) allowed])]
-
-  -- Expression implemented access allowed
-  allowed = applyF (pre "return") [constF (authorizationModule,"AccessGranted")]
-
-  -- Expression implemented access denied
-  --exprDenied = applyF (pre "return")
-  --                    [applyF (authorizationModule,"AccessDenied")
-  --                            [string2ac "Operation not allowed!"]]
 
 ------------------------------------------------------------------------
 -- Auxiliaries:

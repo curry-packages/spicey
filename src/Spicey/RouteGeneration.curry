@@ -10,7 +10,7 @@ import Spicey.GenerationHelper
 
 generateRoutesForERD :: ERD -> CurryProg
 generateRoutesForERD (ERD _ entities _) =
- let spiceySysCtrl = "Controller.SpiceySystemController" in
+ let spiceySysCtrl = "Controller.SpiceySystem" in
  simpleCurryProg
   mappingModuleName
   ([spiceyModule, "System.Routes", spiceySysCtrl, dataModuleName] ++

@@ -6,7 +6,7 @@ import Database.ERD         ( ERD, readERDTermFile )
 import Database.ERD.Goodies ( erdName, storeERDFromProgram )
 import Directory
 import Distribution
-import FilePath             ( (</>) )
+import FilePath             ( (</>), takeFileName )
 import List                 ( isSuffixOf, last )
 import System               ( setEnviron, system, getArgs, exitWith )
 
@@ -16,7 +16,7 @@ import Spicey.Scaffolding
 systemBanner :: String
 systemBanner =
   let bannerText = "Spicey Web Framework (Version " ++ packageVersion ++
-                   " of 14/01/18)"
+                   " of 25/01/18)"
       bannerLine = take (length bannerText) (repeat '-')
    in bannerLine ++ "\n" ++ bannerText ++ "\n" ++ bannerLine
 
@@ -52,13 +52,14 @@ spiceyStructure pkgname =
         ResourceFile NoExec "SessionInfo.curry",
         ResourceFile NoExec "Authorization.curry",
         ResourceFile NoExec "Authentication.curry",
-        ResourceFile NoExec "Processes.curry" ],
+        ResourceFile NoExec "Processes.curry",
+        GeneratedFromERD createAuthorizations ],
       Directory "View" [
-        ResourceFile NoExec "SpiceySystemView.curry",
+        ResourceFile NoExec ("View" </> "SpiceySystem.curry"),
         GeneratedFromERD createViews,
         GeneratedFromERD createHtmlHelpers ],
       Directory "Controller" [
-        ResourceFile NoExec "SpiceySystemController.curry",
+        ResourceFile NoExec ("Controller" </> "SpiceySystem.curry"),
         GeneratedFromERD createControllers ],
       Directory "Model" [
         GeneratedFromERD createModels ],
@@ -110,13 +111,6 @@ replacePackageName pn (c:cs)
     = pn ++ replacePackageName pn (drop 12 cs)
   | otherwise = c : replacePackageName pn cs
 
-copyFileLocal :: FileMode -> String -> String -> String -> IO ()
-copyFileLocal fmode path resource_dir filename = do
-  let infile  = resource_dir </> filename
-  let outfile = path </> filename
-  system $ "cp \"" ++ infile ++ "\" \"" ++ outfile ++ "\""
-  setFileMode fmode outfile
-
 -- checks if given path exists (file or directory) and executes
 -- given action if not
 ifNotExistsDo :: String -> IO () -> IO ()
@@ -132,11 +126,13 @@ createStructure :: String -> String -> ERD -> String -> String -> DirTree
                 -> IO ()
 createStructure target_path resource_dir _ _ _
                 (ResourceFile fmode filename) = do
-  let full_path = target_path </> filename
-  ifNotExistsDo full_path $ do
-    putStrLn $ "Creating file '" ++ full_path ++ "'..."
-    copyFileLocal fmode target_path resource_dir filename
-      
+  let infile     = resource_dir </> filename
+      targetfile = target_path  </> takeFileName filename
+  ifNotExistsDo targetfile $ do
+    putStrLn $ "Creating file '" ++ targetfile ++ "'..."
+    system $ "cp \"" ++ infile ++ "\" \"" ++ targetfile ++ "\""
+    setFileMode fmode targetfile
+
 createStructure target_path resource_dir _ _ _
                 (ResourcePatchFile fmode filename f) = do
   let full_path = target_path </> filename
