@@ -207,10 +207,9 @@ createTransaction erdname (Entity entityName attrList) relationships allEntities
                (zip (parameterList ++ map lowerFirst manyToOneEntities ++
                      map (\e -> (lowerFirst e) ++ "s") manyToManyEntities)
                      [1..]))
-        ] -- parameterlist for controller
-        (applyF (dbconn ">+")
-           [foldr1 (\a b -> applyF (dbconn ">+=") [a,b])
-              ([applyF (entityConstructorFunction erdname (Entity entityName attrList) relationships) 
+        ] -- parameter list for controller
+        (applyF (dbconn ">+=")
+           [applyF (entityConstructorFunction erdname (Entity entityName attrList) relationships) 
                        (map (\ ((Attribute name dom key null), varId) -> 
                           if (isForeignKey (Attribute name dom key null))
                             then applyF (erdname, (lowerFirst (getReferencedEntityName dom))++"Key")
@@ -221,10 +220,17 @@ createTransaction erdname (Entity entityName attrList) relationships allEntities
                                      then applyF (pre "Just") [cv]
                                      else cv)
                           (zip noPKeys [1..])
-                        )
-                     ] ++ (map (\name -> applyF (controllerModuleName entityName, "add"++(linkTableName entityName name allEntities)) [cvar ((lowerFirst name)++"s")]) manyToManyEntities)
-                    ),
-            applyF (pre "return") [constF (pre "()")]]
+                        ),
+            CLambda [cpvar "newentity"]
+             (foldr1 (\a b -> applyF (dbconn ">+") [a,b])
+              (map (\name -> applyF (controllerModuleName entityName,
+                                     "add"++(linkTableName entityName name allEntities))
+                                    [cvar (lowerFirst name ++ "s"),
+                                     cvar "newentity"])
+                   manyToManyEntities ++
+               [applyF (pre "return") [constF (pre "()")]])
+             )
+           ]
            )]
 
 editController :: ControllerGenerator
