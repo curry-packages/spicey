@@ -262,22 +262,14 @@ hasDateAttribute = any isDate
     _           -> False
 
 combinator :: Int -> QName
-combinator n =
-  case n of
-    0 -> error "GenerationHelper.combinator: empty attribute list"
-    1 -> error "GenerationHelper.combinator: no combinator for list of length 1"
-    2 -> (wui "wPair")
-    3 -> (wui "wTriple")
-    4 -> (wui "w4Tuple")
-    5 -> (wui "w5Tuple")
-    6 -> (wui "w6Tuple")
-    7 -> (wui "w7Tuple")
-    8 -> (wui "w8Tuple")
-    9 -> (wui "w9Tuple")
-    10 -> (wui "w10Tuple")
-    11 -> (wui "w11Tuple")
-    12 -> (wui "w12Tuple")
-    _ -> error "GenerationHelper.combinator: attribute list too long"
+combinator n
+ | n==0 = error "GenerationHelper.combinator: empty attribute list"
+ | n==1
+ = error "GenerationHelper.combinator: no combinator for list of length 1"
+ | n>14      = error "GenerationHelper.combinator: attribute list too long"
+ | n==2      = (wui "wPair")
+ | n==3      = (wui "wTriple")
+ | otherwise = (wui $ "w" ++ show n ++ "Tuple")
 
 -- Associate to each attribute of the argument list a WUI specification
 -- as an abstract Curry program

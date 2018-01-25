@@ -44,7 +44,7 @@ wuiSpec erdname (Entity entityName attrlist) relationships allEntities =
     manyToManyEntities = manyToMany allEntities (Entity entityName attrlist)
     manyToOneEntities  = manyToOne (Entity entityName attrlist) relationships
     argumentCount = length attrlist + length manyToOneEntities
-                    + length manyToManyEntities
+                                    + length manyToManyEntities
   in
     stCmtFunc 
     ("The WUI specification for the entity type "++entityName++".\n"++
@@ -65,13 +65,12 @@ wuiSpec erdname (Entity entityName attrlist) relationships allEntities =
               head (attrWidgets attrlist)
             else
               applyF (combinator argumentCount) 
-              (
-                (attrWidgets attrlist) ++
-                (map (\e -> applyF (wui "wSelect")
+               ( attrWidgets attrlist ++
+                 map (\e -> applyF (wui "wSelect")
                               [constF (erdname, lowerFirst e++"ToShortView"),
                                CVar (1, lowerFirst $ e ++ "List")])
-                     manyToOneEntities) ++
-                (map (\e -> 
+                     manyToOneEntities ++
+                 map (\e -> 
                   applyF (wui "wMultiCheckSelect")
                    [CLambda [CPVar (1, lowerFirst e)]
                       (list2ac [
@@ -80,8 +79,8 @@ wuiSpec erdname (Entity entityName attrlist) relationships allEntities =
                                 [CVar (1, lowerFirst e)]
                          ]]),
                     CVar (1, lowerFirst $ e ++ "List")
-                  ]) manyToManyEntities)
-              )
+                  ]) manyToManyEntities
+               )
             ),
             applyF (spiceyModule, "renderLabels")
                    [constF (entitiesToHtmlModule erdname,
