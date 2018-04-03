@@ -59,8 +59,6 @@ createControllers _ (ERD name entities relationship) path _ = do
   putStrLn "Generating default controller authorization 'AuthorizedControllers.curry'..."
   writeFile (path </> "DefaultController.curry")
             (showCProg (generateDefaultController name entities))
-  writeFile (path </> "AuthorizedControllers.curry")
-            (showCProg (generateAuthorizations name entities))
  where
   erdt = transform (ERD name entities relationship)
 
