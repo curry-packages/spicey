@@ -13,12 +13,13 @@ To generate an application, follow the steps below.
        spiceup .../BlogERD.curry
 
    This generates the complete source code of the initial application
+   as a Curry package
    (see the generated file README.txt for some explanations).
 
    You can also provide a file name for the SQLite3 database in which
    all data is stored, e.g.,
 
-       spiceup --db BlogData.db .../Blog.erdterm
+       spiceup --db BlogData.db .../BlogERD.curry
 
    If the parameter "--db ..." is not provided, then the name of database
    file is "<ERD>.db" where <ERD> is the name of the specified ER model.
