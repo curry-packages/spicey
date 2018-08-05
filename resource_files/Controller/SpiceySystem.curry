@@ -9,7 +9,7 @@ module Controller.SpiceySystem
   (loginController,processListController,historyController)
  where
 
-import ReadNumeric
+import Numeric
 
 import Config.UserProcesses
 import System.Spicey
@@ -34,9 +34,9 @@ processListController = do
   if null args
    then return $ processListView availableProcesses
    else case (readInt (head args)) of
-          Just (idInt, _) -> do
+          [(idInt, _)] ->
             startProcess (processNames availableProcesses !! (idInt - 1))
-          Nothing ->
+          _            ->
             displayError "could not read process id"
 
 -----------------------------------------------------------------------------

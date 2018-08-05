@@ -2,10 +2,10 @@ module Spicey.GenerationHelper where
 
 import AbstractCurry.Types
 import AbstractCurry.Build
-import Char
+import Data.Char
 import Database.ERD
 import Database.ERD.Goodies
-import Time
+import Data.Time
 
 ------------------------------------------------------------------------
 -- lower the first character in a string
@@ -107,7 +107,7 @@ oneToOne (Entity ename _) rel =
 
 manyToOne :: Entity -> [Relationship] -> [String]
 manyToOne (Entity ename _) rel =
-    map (relatedRelation ename) (filter isManyToOne rel)    
+    map (relatedRelation ename) (filter isManyToOne rel)
   where
     isManyToOne :: Relationship -> Bool
     isManyToOne relationship =
@@ -118,7 +118,7 @@ manyToOne (Entity ename _) rel =
         _  -> False
 
 manyToMany :: [Entity] -> Entity -> [String]
-manyToMany entities forEntity = 
+manyToMany entities forEntity =
     map (getOtherREnd forEntity)
         (filter (\ (Entity ename attr) -> isGenerated (Entity ename attr) &&
                                           isRelevantForEntity forEntity attr)
@@ -128,7 +128,7 @@ manyToMany entities forEntity =
                  (Entity _ [(Attribute _ (KeyDom name1) _ _),
                             (Attribute _ (KeyDom name2) _ _)]) =
       if (name1 == ename) then name2 else name1
-      
+
 linkTableName :: String -> String -> [Entity] -> String
 linkTableName ename1 ename2 entities =
     getLinkTableName (filter isGenerated entities)
@@ -139,7 +139,7 @@ linkTableName ename1 ename2 entities =
       then name
       else getLinkTableName erest
     getLinkTableName [] = error "linkTableName: link not found"
-        
+
 --- The standard type of new and list controllers.
 controllerType :: CTypeExpr
 controllerType = baseType (spiceyModule,"Controller")
@@ -153,15 +153,15 @@ controllerFunctionName :: String -> String -> QName
 controllerFunctionName entityName controllerFunction =
   (controllerModuleName entityName,
    controllerFunction ++ entityName ++ "Controller")
-  
+
 --- The name of the transaction function for a given entity and transaction
 --- functionality.
 transFunctionName :: String -> String -> QName
 transFunctionName entityName controllerFunction =
   (controllerModuleName entityName,
    controllerFunction ++ entityName ++ "T")
-  
-  
+
+
 viewModuleName :: String -> String
 viewModuleName entityName = "View." ++ entityName
 
@@ -175,8 +175,8 @@ viewBlockType = listType (baseType (html "HtmlExp"))
 
 attrType :: Attribute -> CTypeExpr
 attrType (Attribute _ t k False) =
-  case t of (IntDom _)       -> if k==PKey 
-                                then ctvar "Key" 
+  case t of (IntDom _)       -> if k==PKey
+                                then ctvar "Key"
                                 else ctvar "Int"
             (FloatDom _)     -> ctvar "Float"
             (StringDom _ )   -> ctvar "String"
@@ -185,8 +185,8 @@ attrType (Attribute _ t k False) =
             (UserDefined s _)-> ctvar s
             (KeyDom _)       -> ctvar "Key"
             _                -> ctvar "Int"
-attrType (Attribute _ t k True) = 
-  case t of (IntDom _)       -> if k==PKey 
+attrType (Attribute _ t k True) =
+  case t of (IntDom _)       -> if k==PKey
                                 then maybeType (ctvar "Key")
                                 else maybeType (ctvar "Int")
             (FloatDom _)     -> maybeType (ctvar "Float")

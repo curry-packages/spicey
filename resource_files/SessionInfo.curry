@@ -10,11 +10,11 @@
 ----------------------------------------------------------------------------
 
 module System.SessionInfo (
-  UserSessionInfo(..), userLoginOfSession, setUserLoginOfSession, 
+  UserSessionInfo(..), userLoginOfSession, setUserLoginOfSession,
   getUserSessionInfo, updateUserSessionInfo
  ) where
 
-import Global
+import Data.Global
 import System.Session
 
 --------------------------------------------------------------------------

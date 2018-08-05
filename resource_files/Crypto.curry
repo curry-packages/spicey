@@ -10,8 +10,8 @@ module System.Crypto
   ( getHash, randomString )
  where
 
-import Random
-import IO
+import System.Random
+import System.IO
 import IOExts
 
 --------------------------------------------------------------------------

@@ -1,13 +1,12 @@
 {
     "name": "spicey",
-    "version": "3.0.0",
+    "version": "4.0.0",
     "author": "Michael Hanus <mh@informatik.uni-kiel.de>",
     "synopsis": "A web application framework for Curry",
     "category": [ "Web", "Database" ],
     "dependencies": {
-        "base"          : ">= 1.0.0, < 2.0.0",
-        "abstract-curry": ">= 2.0.0",
-        "ertools"       : ">= 2.0.0"
+        "abstract-curry": ">= 3.0.0",
+        "ertools"       : ">= 3.0.0"
     },
     "compilerCompatibility": {
         "pakcs": ">= 2.0.0",

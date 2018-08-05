@@ -4,9 +4,9 @@
 --------------------------------------------------------------------------
 
 module System.Spicey (
-  module System, 
-  module HTML.Base, 
-  module ReadNumeric, 
+  module System,
+  module HTML.Base,
+  module Numeric,
   Controller, applyControllerOn,
   nextController, nextControllerForData, confirmNextController,
   confirmController, transactionController,
@@ -24,12 +24,12 @@ module System.Spicey (
   saveLastUrl, getLastUrl, getLastUrls
   ) where
 
-import Char (isSpace,isDigit)
-import Global
-import ReadNumeric
+import Data.Char (isSpace,isDigit)
+import Data.Global
+import Numeric
 import ReadShowTerm(readsQTerm)
-import System
-import Time
+import System.Process
+import Data.Time
 
 import Database.CDBI.Connection ( SQLResult )
 import HTML.Base
@@ -125,7 +125,7 @@ parseUrl :: String -> (String, [String])
 parseUrl urlparam =
   let (url:ctrlparams) = splitUrl urlparam
   in  (url,ctrlparams)
-  
+
 --- Splits the URL parameter passed to the main script into a list of
 --- strings. The strings are separated in the URL by '/'.
 splitUrl :: String -> [String]
@@ -170,7 +170,7 @@ renderWuiForm wuispec initdata controller cancelcontroller title buttontag =
      wuiHandler2button buttontag hdlr `addClass` "btn btn-primary",
      defaultButton "cancel"
                    (nextController (cancelOperation >> cancelcontroller))]
-      
+
   (hexp,handler) = wuiWithErrorForm wuispec
                      initdata
                      (nextControllerForData controller)
@@ -245,7 +245,7 @@ spiceyFooter =
              [image "images/spicey-logo.png" "Spicey"]
           `addAttr` ("target","_blank"),
         htxt "Framework"]]
-        
+
 --- Transforms a view into an HTML form by adding the basic page layout.
 getForm :: ViewBlock -> IO HtmlForm
 getForm viewblock = case viewblock of
@@ -271,7 +271,7 @@ getForm viewblock = case viewblock of
       then HtmlStruct "header" [("class","pagemessage pagemessage-empty")]
                       [htxt ("Last page: "++lasturl)]
       else HtmlStruct "header" [("class","pagemessage")] [htxt msg]
-        
+
   rightTopMenu login =
     [[href "?login" (maybe [loginIcon, nbsp, htxt "Login"]
                            (\n -> [logoutIcon, nbsp, htxt "Logout"

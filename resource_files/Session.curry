@@ -14,9 +14,9 @@ module System.Session (
   ) where
 
 import HTML.Base
-import Time
-import Global
-import List
+import Data.Time
+import Data.Global
+import Data.List
 
 import System.Crypto
 
@@ -97,7 +97,7 @@ getSessionData sessionData = do
       then Just storedData
       else findInSession si rest
     findInSession _ [] = Nothing
-      
+
 --- Stores data related to the current user session in a session store.
 putSessionData :: a -> Global (SessionStore a) -> IO ()
 putSessionData newData sessionData = do

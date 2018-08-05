@@ -4,11 +4,12 @@ module Spicey.SpiceUp where
 
 import Database.ERD         ( ERD, readERDTermFile )
 import Database.ERD.Goodies ( erdName, storeERDFromProgram )
-import Directory
+import System.Directory
 import Distribution
-import FilePath             ( (</>), takeFileName )
-import List                 ( isSuffixOf, last )
-import System               ( setEnviron, system, getArgs, exitWith )
+import System.FilePath      ( (</>), takeFileName )
+import Data.List            ( isSuffixOf, last )
+import System.Process       ( system, exitWith )
+import System.Environment   ( setEnv, getArgs )
 
 import Spicey.PackageConfig ( packagePath, packageVersion, packageLoadPath )
 import Spicey.Scaffolding
@@ -37,7 +38,7 @@ data DirTree =
    -- takes an operation to generate code from ERD specification
 
 spiceyStructure :: String -> DirTree
-spiceyStructure pkgname = 
+spiceyStructure pkgname =
   Directory "." [
     ResourceFile NoExec "README.txt",
     ResourcePatchFile NoExec "package.json" (replacePackageName pkgname),
@@ -170,7 +171,7 @@ main = do
  where
   createStructureWith orgfile dbfile = do
     -- set CURRYPATH in order to compile ERD model (which requires Database.ERD)
-    unless (null packageLoadPath) $ setEnviron "CURRYPATH" packageLoadPath
+    unless (null packageLoadPath) $ setEnv "CURRYPATH" packageLoadPath
     -- The directory containing the project generator:
     let resourcedir = packagePath </> "resource_files"
     exfile <- doesFileExist orgfile

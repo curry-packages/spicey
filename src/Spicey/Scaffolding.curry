@@ -6,12 +6,12 @@ module Spicey.Scaffolding where
 
 import AbstractCurry.Types
 import AbstractCurry.Build
-import AbstractCurry.Pretty hiding(showCProg)
+import AbstractCurry.Pretty hiding ( showCProg )
 import Database.ERD
-import Directory
-import FilePath ( (</>) )
-import IO
-import System(system)
+import System.Directory
+import System.FilePath ( (</>) )
+import System.IO
+import System.Process ( system )
 
 import ERD2Curry ( erd2cdbiWithDBandERD )
 import Database.ERD.Goodies
@@ -105,7 +105,7 @@ createRoutes _ erd path _ = do
   putStrLn $ "Saving '"++mappingModuleName++".curry'..."
   mmfileh <- openFile (path </> "ControllerMapping.curry") WriteMode
   hPutStr mmfileh (showCProg (generateRoutesForERD erd))
-  hClose mmfileh  
+  hClose mmfileh
   putStrLn $ "Saving '"++dataModuleName++".curry'..."
   dmfileh <- openFile (path </> "RoutesData.curry") WriteMode
   hPutStr dmfileh (showCProg (generateStartpointDataForERD erd))
