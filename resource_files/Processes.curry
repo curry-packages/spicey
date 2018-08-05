@@ -11,9 +11,9 @@ module System.Processes
 import Config.UserProcesses
 
 import AllSolutions
-import Global
+import Data.Global
 import HTML.Base
-import Maybe
+import Data.Maybe
 import ReadShowTerm
 
 import System.Routes
