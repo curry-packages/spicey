@@ -6,7 +6,7 @@
     "category": [ "Web" ],
     "dependencies": {
         "cdbi" : ">= 2.0.0",
-        "html" : ">= 2.0.0",
+        "html" : ">= 2.1.0",
         "wui"  : ">= 2.0.0"
     },
     "compilerCompatibility": {
