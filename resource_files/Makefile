@@ -74,6 +74,8 @@ deploy: checkdeploy
 	$(CPM) exec $(MAKECGI) -standalone -m main -o $(WEBSERVERDIR)/spicey.cgi Main.curry
 	# copy other files (style sheets, images,...)
 	cp -r public/* $(WEBSERVERDIR)
+	mkdir -p $(WEBSERVERDIR)/data # create private data dir
+	cp -p data/htaccess $(WEBSERVERDIR)/data/.htaccess # and make it private
 	chmod -R go+rX $(WEBSERVERDIR)
 
 # clean up generated the package directory
