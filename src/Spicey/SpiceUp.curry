@@ -5,7 +5,7 @@ module Spicey.SpiceUp where
 import Database.ERD         ( ERD, readERDTermFile )
 import Database.ERD.Goodies ( erdName, storeERDFromProgram )
 import Directory
-import Distribution
+import Distribution         ( installDir )
 import FilePath             ( (</>), takeFileName )
 import List                 ( isSuffixOf, last )
 import System               ( setEnviron, system, getArgs, exitWith )
