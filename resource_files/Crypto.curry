@@ -10,9 +10,10 @@ module System.Crypto
   ( getHash, randomString )
  where
 
-import Random
 import IO
 import IOExts
+
+import System.Random
 
 --------------------------------------------------------------------------
 -- Operations for hashing.
