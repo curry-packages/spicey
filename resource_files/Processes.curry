@@ -8,16 +8,16 @@ module System.Processes
   , nextControllerRefInProcessOrForUrl
   ) where
 
-import Config.UserProcesses
-
-import AllSolutions
-import Global
-import HTML.Base
 import Maybe
 import ReadShowTerm
 
-import System.Routes
+import Control.AllSolutions ( getOneValue )
+import Global
+import HTML.Base
+
 import Config.RoutesData
+import Config.UserProcesses
+import System.Routes
 import System.Session
 
 --------------------------------------------------------------------------
@@ -36,7 +36,7 @@ getControllerForState sid (ProcSpec _ ctrlof _) = ctrlof sid
 --- Is a state a final state, i.e., without successors, in a process system?
 isFinalState :: a -> Processes a -> IO Bool
 isFinalState sid (ProcSpec _ _ trans) = do
-  succs <- getOneSolution (\x -> let p free in x =:= trans sid p)
+  succs <- getOneValue (trans sid _)
   return (maybe True (const False) succs)
 
 --------------------------------------------------------------------------
