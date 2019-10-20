@@ -147,6 +147,11 @@ controllerType = baseType (spiceyModule,"Controller")
 controllerModuleName :: String -> String
 controllerModuleName entityName = "Controller." ++ entityName
 
+--- The name of the type synonym for a "new entity" tuple.
+newEntityTypeName :: String -> QName
+newEntityTypeName entityName =
+  (controllerModuleName entityName, "New" ++ entityName)
+  
 --- The name of the controller function for a given entity and controller
 --- functionality.
 controllerFunctionName :: String -> String -> QName

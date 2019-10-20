@@ -7,12 +7,13 @@ module System.Spicey (
   module System, 
   module HTML.Base, 
   module ReadNumeric, 
-  Controller, applyControllerOn,
-  nextController, nextControllerForData, confirmNextController,
-  confirmController, transactionController,
+  Controller, EntityController(..), applyControllerOn,
+  nextController, nextControllerForData,
+  confirmDeletionPage,
+  transactionController,
   getControllerURL,getControllerParams, showControllerURL,
   getForm, wDateType, wBoolean, wUncheckMaybe, wFloat,
-  displayError, cancelOperation,
+  displayError, displayUrlError, cancelOperation,
   renderWuiForm, renderLabels,
   nextInProcessOr,
   stringToHtml, maybeStringToHtml,
@@ -58,10 +59,16 @@ type ViewBlock = [HtmlExp]
 --- Spicey.getControllerParams inside the controller.
 type Controller = IO ViewBlock
 
+--- The type class `EntityController` provides the application
+--- of a controller to some entity identified by a key string.
+class EntityController a where
+  controllerOnKey :: String -> (a -> Controller) -> Controller
+
+
 --- Reads an entity for a given key and applies a controller to it.
 applyControllerOn :: Maybe enkey -> (enkey -> IO en)
                   -> (en -> Controller) -> Controller
-applyControllerOn Nothing _ _ = displayError "Illegal URL"
+applyControllerOn Nothing _ _ = displayUrlError
 applyControllerOn (Just userkey) getuser usercontroller =
   getuser userkey >>= usercontroller
 
@@ -76,23 +83,24 @@ nextControllerForData controller param = do
   view <- controller param
   getForm view
 
---- Call the next controller after a user confirmation.
---- The Boolean user answer is passed as an argument to the controller.
-confirmNextController :: HtmlExp -> (Bool -> Controller) -> _ -> IO HtmlForm
-confirmNextController question controller _ = do
-  getForm [question,
-           defaultButton "Yes" (nextController (controller True)),
-           defaultButton "No"  (nextController (controller False))]
-
---- Ask the user for a confirmation and call the corresponding controller.
+--- Generates a page to ask the user for a confirmation to delete an entity
+--- specified in the controller URL (of the form "entity/delete/key/...").
+--- The yes/no answers are references derived from the controller URL
+--- where the second argument is replaced by "destroy"/"show".
 --- @param question - a question asked
 --- @param yescontroller - the controller used if the answer is "yes"
 --- @param nocontroller  - the controller used if the answer is "no"
-confirmController :: [HtmlExp] -> Controller -> Controller -> Controller
-confirmController question yescontroller nocontroller = do
-  return $ question ++
-           [par [defaultButton "Yes" (nextController yescontroller),
-                 defaultButton "No"  (nextController nocontroller )]]
+confirmDeletionPage :: UserSessionInfo -> String -> Controller
+confirmDeletionPage _ question = do
+  (entity,ctrlargs) <- getControllerURL
+  case ctrlargs of
+    (_:args) -> return $
+      [h3 [htxt question],
+       par [hrefButton (showControllerURL entity ("destroy":args)) [htxt "Yes"],
+            nbsp,
+            hrefButton (showControllerURL entity ("show" : args)) [htxt "No"]]]
+    _ -> displayUrlError
+
 
 --- A controller to execute a transaction and proceed with a given
 --- controller if the transaction succeeds. Otherwise, the
@@ -300,6 +308,10 @@ displayError msg = do
   if null msg
    then return [htxt "General error (shown by function Spicey.displayError)"]
    else return [htxt msg]
+
+--- A controller to display an URL error.
+displayUrlError :: Controller
+displayUrlError = displayError "Illegal URL"
 
 -- like renderTaggedTuple from WUI Library but takes list of HtmlExp
 -- instead of list of strings

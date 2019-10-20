@@ -23,50 +23,74 @@ generateControllersForEntity :: String -> [Entity] -> Entity
                              -> [Relationship]
                              -> CurryProg
 generateControllersForEntity erdname allEntities
-                             (Entity ename attrlist) relationships =
- simpleCurryProg
+                             entity@(Entity ename _) relationships =
+ CurryProg
   (controllerModuleName ename)
   -- imports:
-  [ spiceyModule, "HTML.Base", "Time"
-  , erdname, viewModuleName ename
-  , "Maybe", sessionInfoModule, authorizationModule, enauthModName
-  , "Config.UserProcesses",
-   entitiesToHtmlModule erdname]
-  [] -- typedecls
+  [ "Maybe", "Time", "HTML.Base"
+  , erdname
+  , "Config.UserProcesses"
+  , sessionInfoModule, authorizationModule, enauthModName, spiceyModule
+  , entitiesToHtmlModule erdname
+  , viewModuleName ename
+  ]
+  Nothing -- defaultdecl
+  [] -- classdecls
+  [controllerInstDecl erdname entity] -- instdecls
+  [newEntityType erdname entity relationships allEntities] -- typedecls
   -- functions
   (
     [
      -- controller for dispatching to various controllers:
-     mainController erdname (Entity ename attrlist) relationships allEntities,
+     mainController erdname entity relationships allEntities,
      -- controller for providing a page to enter new entity data:
-     newController erdname (Entity ename attrlist) relationships allEntities,
+     newController erdname entity relationships allEntities,
      -- transaction for saving data in new entity:
-     createTransaction erdname (Entity ename attrlist)
-                               relationships allEntities,
+     createTransaction erdname entity relationships allEntities,
      -- controller to show an existing record in a form to edit
-     editController erdname (Entity ename attrlist) relationships allEntities,
+     editController erdname entity relationships allEntities,
      -- transaction to update a record with the given data
-     updateTransaction erdname (Entity ename attrlist)
-                               relationships allEntities,
+     updateTransaction erdname entity relationships allEntities,
      -- controller to delete an entity with the given data
-     deleteController erdname (Entity ename attrlist)
-                              relationships allEntities,
+     deleteController erdname entity relationships allEntities,
+     -- controller to destroy an entity with the given data
+     destroyController erdname entity relationships allEntities,
      -- transaction to delete an entity with the given data
-     deleteTransaction erdname (Entity ename attrlist)
-                               relationships allEntities,
+     deleteTransaction erdname entity relationships allEntities,
      -- controller to list all entities:
-     listController erdname (Entity ename attrlist) relationships allEntities,
+     listController erdname entity relationships allEntities,
      -- controller to show entites:
-     showController erdname (Entity ename attrlist) relationships allEntities
+     showController erdname entity relationships allEntities
    ] ++ 
-    (manyToManyAddOrRemove erdname (Entity ename attrlist) (manyToMany allEntities (Entity ename attrlist)) allEntities) ++
-    --(getAll erdname (Entity ename attrlist) (manyToOne (Entity ename attrlist) relationships) allEntities) ++
-    --(getAll erdname (Entity ename attrlist) (manyToMany allEntities (Entity ename attrlist)) allEntities) ++
-    --(manyToManyGetRelated erdname (Entity ename attrlist) (manyToMany allEntities (Entity ename attrlist)) allEntities) ++
-    (manyToOneGetRelated erdname (Entity ename attrlist) (manyToOne (Entity ename attrlist) relationships) allEntities relationships)
+   manyToManyAddOrRemove erdname entity (manyToMany allEntities entity)
+                         allEntities ++
+    --(getAll erdname entity (manyToOne entity relationships) allEntities) ++
+    --(getAll erdname entity (manyToMany allEntities entity) allEntities) ++
+    --(manyToManyGetRelated erdname entity (manyToMany allEntities entity) allEntities) ++
+    manyToOneGetRelated erdname entity (manyToOne entity relationships)
+                        allEntities relationships
   )
   [] -- opdecls
 
+
+-- Generates the instance declaration for a controller.
+controllerInstDecl :: String -> Entity -> CInstanceDecl
+controllerInstDecl erdname (Entity entityName _) =
+  CInstance (spiceyModule,"EntityController")
+            (CContext [])
+            (baseType (erdname, entityName))
+    [cfunc (spiceyModule,"controllerOnKey") 1 Private
+      (CQualType (CContext [((spiceyModule,"EntityController"),tvara)])
+         (stringType ~> (tvara ~> controllerType) ~> controllerType))
+        [simpleRule [CPVar (2,"s")]
+                    (applyF (spiceyModule,"applyControllerOn")
+                            [readKey, getEntityOp])]]
+ where
+  tvara       = CTVar (0,"a")
+  readKey     = applyF (erdname, "read" ++ entityName ++ "Key") [CVar (2,"s")]
+  getEntityOp = applyF (pre ".")
+                       [constF (erdname, "runJustT"),
+                        constF (erdname, "get" ++ entityName)]
 
 -- erdname: name of the entity-relationship-specification
 -- entity: the entity to generate a controller for
@@ -75,7 +99,7 @@ type ControllerGenerator = String -> Entity -> [Relationship] -> [Entity] -> CFu
 -- Generates the main controller that dispatches to the various
 -- subcontrollers according to the URL parameters.
 mainController :: ControllerGenerator
-mainController erdname (Entity entityName _) _ _ =
+mainController _ (Entity entityName _) _ _ =
   controllerFunction 
   ("Choose the controller for a "++entityName++
    " entity according to the URL parameter.")
@@ -92,33 +116,32 @@ mainController erdname (Entity entityName _) _ _ =
               cBranch (listPattern [stringPattern "list"])
                       (constF (controllerFunctionName entityName "list")),
               cBranch (listPattern [stringPattern "new"])
-                      (constF (controllerFunctionName entityName "new")),
-              cBranch (listPattern [stringPattern "show", CPVar (2,"s")])
-                (applyF (spiceyModule,"applyControllerOn")
-                  [readKey,
-                   getEntityOp,
-                   constF (controllerFunctionName entityName "show")]),
-              cBranch (listPattern [stringPattern "edit", CPVar (2,"s")])
-                (applyF (spiceyModule,"applyControllerOn")
-                  [readKey,
-                   getEntityOp,
-                   constF (controllerFunctionName entityName "edit")]),
-              cBranch (listPattern [stringPattern "delete", CPVar (2,"s")])
-                (applyF (spiceyModule,"applyControllerOn")
-                  [readKey,
-                   getEntityOp,
-                   constF (controllerFunctionName entityName "delete")]),
-              cBranch (CPVar (3,"_"))
-                 (applyF (spiceyModule, "displayError")
-                         [string2ac "Illegal URL"])])
+                      (constF (controllerFunctionName entityName "new"))] ++
+              map applyControllerBranch ["show", "edit", "delete", "destroy"] ++
+             [cBranch (CPVar (3,"_"))
+                      (constF (spiceyModule, "displayUrlError"))])
           )
          ]
       )]
  where
-  readKey     = applyF (erdname,"read"++entityName++"Key") [CVar (2,"s")]
-  getEntityOp = applyF (pre ".")
-                       [constF (erdname,"runJustT"),
-                        constF (erdname,"get"++entityName)]
+  applyControllerBranch n = let svar = (2,"s") in
+    cBranch (listPattern [stringPattern n, CPVar svar])
+            (applyF (spiceyModule,"controllerOnKey")
+                    [CVar svar, constF (controllerFunctionName entityName n)])
+
+--- Generates a type alias for a "new entity" tuple type which is
+--- used to create and insert new entities (without an entity key).
+newEntityType :: String -> Entity -> [Relationship] -> [Entity] -> CTypeDecl
+newEntityType erdname (Entity entityName attrList) relationships allEntities =
+  let notGeneratedAttributes = filter (\attr -> not (isForeignKey attr)
+                                                && notPKey attr)
+                                      attrList
+      manyToManyEntities = manyToMany allEntities (Entity entityName attrList)
+      manyToOneEntities  = manyToOne (Entity entityName attrList) relationships
+  in CTypeSyn (newEntityTypeName entityName) Private []
+       (tupleType (map attrType notGeneratedAttributes ++
+                   map ctvar manyToOneEntities ++
+                   map (listType . ctvar) manyToManyEntities))
 
 -- generates a controller to show a form to create a new entity
 -- the input is then passed to the create controller
@@ -197,10 +220,8 @@ createTransaction erdname (Entity entityName attrList) relationships allEntities
     ("Transaction to persist a new "++entityName++" entity to the database.")
     (transFunctionName entityName "create")
     1 Private
-      (tupleType (map attrType notGeneratedAttributes ++
-                  map ctvar manyToOneEntities ++
-                  map (listType . ctvar) manyToManyEntities)
-        ~> applyTC (dbconn "DBAction") [baseType (pre "()")])
+      (baseType (newEntityTypeName entityName)
+        ~> applyTC (dbconn "DBAction") [unitType])
       [simpleRule 
         [tuplePattern
           (map (\ (param, varId) -> CPVar (varId, param)) 
@@ -365,8 +386,9 @@ updateTransaction erdname (Entity entityName attrList) _ allEntities =
 --- Generates controller to delete an entity after confirmation.
 deleteController :: ControllerGenerator
 deleteController erdname (Entity entityName _) _ _ =
-  let entlc  = lowerFirst entityName  -- entity name in lowercase
-      entvar = (0, entlc)             -- entity parameter for controller
+  let entlc    = lowerFirst entityName  -- entity name in lowercase
+      entvar   = (0, entlc)             -- entity parameter for controller
+      sinfovar = (1, "sinfo")           -- "sinfo" parameter
   in
   controllerFunction
   ("Deletes a given "++entityName++" entity (after asking for confirmation)\n"++
@@ -378,25 +400,38 @@ deleteController erdname (Entity entityName _) _ _ =
        [applyF checkAuthorizationFunc
          [applyF (enauthModName,entlc++"OperationAllowed")
                  [applyF (authorizationModule,"DeleteEntity") [CVar entvar]]],
+        CLambda [CPVar sinfovar] $
+         applyF (spiceyModule,"confirmDeletionPage")
+                [CVar sinfovar,
+                 applyF (pre "concat")
+                   [list2ac [string2ac "Really delete entity \"",
+                             applyF (entitiesToHtmlModule erdname,
+                                     entlc ++ "ToShortView")
+                                    [CVar entvar],
+                             string2ac "\"?"]]]])]
+
+--- Generates controller to delete an entity.
+destroyController :: ControllerGenerator
+destroyController erdname (Entity entityName _) _ _ =
+  let entlc  = lowerFirst entityName  -- entity name in lowercase
+      entvar = (0, entlc)             -- entity parameter for controller
+  in
+  controllerFunction
+  ("Deletes a given " ++ entityName ++ " entity\n" ++
+   "and proceeds with the list controller.")
+  entityName "destroy" 1
+  (baseType (erdname, entityName) ~> controllerType)
+  [simpleRule [CPVar entvar]
+    (applyF (pre "$")
+       [applyF checkAuthorizationFunc
+         [applyF (enauthModName,entlc++"OperationAllowed")
+                 [applyF (authorizationModule,"DeleteEntity") [CVar entvar]]],
         CLambda [CPVar (0,"_")] $
-         applyF (spiceyModule,"confirmController")
-         [list2ac
-           [applyF (html "h3")
-             [list2ac
-               [applyF (html "htxt")
-                [applyF (pre "concat")
-                 [list2ac [string2ac "Really delete entity \"",
-                           applyF (entitiesToHtmlModule erdname,
-                                   entlc++"ToShortView")
-                                  [CVar entvar],
-                           string2ac "\"?"]]]]]],
-          applyF (spiceyModule,"transactionController")
+         applyF (spiceyModule,"transactionController")
             [applyF (erdname,"runT")
                     [applyF (transFunctionName entityName "delete")
                             [CVar entvar]],
-             constF (controllerFunctionName entityName "list")],
-          applyF (controllerFunctionName entityName "show")
-                 [CVar entvar]]])]
+             constF (controllerFunctionName entityName "list")]])]
 
 --- Generates a transaction to delete an entity.
 deleteTransaction :: ControllerGenerator
