@@ -1,29 +1,28 @@
 # Generic Makefile for Spicey applications
 
+# Definition of the root of the Curry system to be used:
+SYSTEM=XXXCURRYHOMEXXX
+
+# Curry bin directory to be used:
+export CURRYBIN=$(SYSTEM)/bin
+
 CURRYOPTIONS=:set -time
 
 # Target directory where the compiled cgi programs, style sheets, etc
 # should be stored, e.g.: $(HOME)/public_html
 WEBSERVERDIR = $(error "Define variable WEBSERVERDIR!")
 
-# Definition of the Curry installation bin directory to be used:
-export CURRYBIN=XXXCURRYBINXXX
-
 # Executable of the Curry Package Manager CPM:
 CPM := $(CURRYBIN)/cypm
+
+# Executable of the curry2cgi:
+CURRY2CGI := $(shell which curry2cgi)
 
 # The root directory of the sources of the Spicey application:
 SRCDIR := $(CURDIR)/src
 
 # The load path for the Spicey application:
 export CURRYPATH := $(SRCDIR):$(SRCDIR)/Model
-
-# Executable of CPNSD:
-CPNSD := $(shell which curry-cpnsd)
-# Executable of the CGI registry and submission form:
-CURRYCGI := $(shell which curry-cgi)
-# Executable of the makecgi:
-MAKECGI := $(shell which curry-makecgi)
 
 ############################################################################
 
@@ -39,15 +38,9 @@ install:
 # check presence of tools required for deployment and install them:
 .PHONY: checkdeploy
 checkdeploy:
-	@if [ ! -x "$(CPNSD)" ] ; then \
-	   echo "Installing required executable 'curry-cpnsd'..." ; \
-           $(CPM) install cpns ; fi
-	@if [ ! -x "$(CURRYCGI)" ] ; then \
-	   echo "Installing required executable 'curry-cgi'..." ; \
-           $(CPM) install html-cgi ; fi
-	@if [ ! -x "$(MAKECGI)" ] ; then \
-	   echo "Installing required executable 'curry-makecgi'..." ; \
-           $(CPM) install html ; fi
+	@if [ ! -x "$(CURRY2CGI)" ] ; then \
+	   echo "Installing required executable 'curry2cgi'..." ; \
+           $(CPM) install html2 ; fi
 
 # Compile the generated Spicey application:
 .PHONY: compile
@@ -71,20 +64,26 @@ run:
 .PHONY: deploy
 deploy: checkdeploy
 	mkdir -p $(WEBSERVERDIR)
-	$(CPM) exec $(MAKECGI) -standalone -m main -o $(WEBSERVERDIR)/spicey.cgi Main.curry
+	$(MAKE) $(WEBSERVERDIR)/spicey.cgi
 	# copy other files (style sheets, images,...)
 	cp -r public/* $(WEBSERVERDIR)
-	mkdir -p $(WEBSERVERDIR)/data # create private data dir
-	cp -p data/htaccess $(WEBSERVERDIR)/data/.htaccess # and make it private
 	chmod -R go+rX $(WEBSERVERDIR)
+	# recreate directory for storing local session data:
+	/bin/rm -rf $(WEBSERVERDIR)/data
+	mkdir -p $(WEBSERVERDIR)/data
+	chmod 700 $(WEBSERVERDIR)/data
+
+$(WEBSERVERDIR)/spicey.cgi: src/*.curry src/*/*.curry
+	$(CPM) exec $(CURRY2CGI) --system="$(SYSTEM)" \
+	  -i Controller.SpiceySystem XXXICONTROLLERXXX \
+	  -o $@ Main.curry
 
 # clean up generated the package directory
 .PHONY: clean
 clean: 
 	$(CPM) clean
 
-# clean everything, including the deployed files (be sure to save the
-# database files first!)
+# clean everything, including the deployed files
 .PHONY: cleanall
 cleanall: clean
-	/bin/rm -rf $(WEBSERVERDIR)
+	/bin/rm -f $(WEBSERVERDIR)/spicey.cgi*

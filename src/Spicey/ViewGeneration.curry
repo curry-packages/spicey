@@ -16,9 +16,11 @@ generateViewsForEntity erdname allEntities
      noPKeyAttrs = filter notPKey attrlist
   in simpleCurryProg
   (viewModuleName ename)
-  [ "WUI", "HTML.Base", "Time", "Sort", bootstrapModule
+  [ "Sort", "Time"
+  , "HTML.Base", bootstrapModule, "HTML.WUI"
+  , erdname
   , spiceyModule, sessionInfoModule
-  , erdname, entitiesToHtmlModule erdname] -- imports
+  , entitiesToHtmlModule erdname] -- imports
   [] -- typedecls
   -- functions
   [
@@ -26,16 +28,13 @@ generateViewsForEntity erdname allEntities
    tuple2Entity erdname (Entity ename noPKeyAttrs) relationships allEntities,
    entity2Tuple erdname (Entity ename noPKeyAttrs) relationships allEntities,
    wuiType      erdname (Entity ename noKeyAttrs) relationships allEntities,
-   blankView    erdname (Entity ename noKeyAttrs) relationships allEntities,
-   createView   erdname (Entity ename noKeyAttrs) relationships allEntities,
-   editView     erdname (Entity ename noKeyAttrs) relationships allEntities,
    showView     erdname (Entity ename noKeyAttrs) relationships allEntities,
    leqEntity    erdname (Entity ename noKeyAttrs) relationships allEntities,
    listView     erdname (Entity ename noKeyAttrs) relationships allEntities
   ]  
   [] -- opdecls
   
-  
+
 type ViewGenerator = String -> Entity -> [Relationship] -> [Entity] -> CFuncDecl
 
 wuiSpec :: ViewGenerator
@@ -53,25 +52,25 @@ wuiSpec erdname (Entity entityName attrlist) relationships allEntities =
      else "It also includes fields for associated entities.")
     (viewModuleName entityName, "w"++entityName) 2 Public
     (foldr CFuncType
-           (applyTC ("WUI", "WuiSpec")
+           (applyTC (wuiModule "WuiSpec")
                [entityInterface attrlist manyToOneEntities manyToManyEntities])
            (map (\e -> listType (ctvar e))
                 (manyToOneEntities ++ manyToManyEntities))-- possible values
     )
     [simpleRule (map (\e -> CPVar (1, lowerFirst $ e ++ "List"))
                      (manyToOneEntities ++ manyToManyEntities))
-       (applyF ("WUI", "withRendering") [         
+       (applyF (wuiModule "withRendering") [         
             (if (argumentCount == 1) then
               head (attrWidgets attrlist)
             else
               applyF (combinator argumentCount) 
                ( attrWidgets attrlist ++
-                 map (\e -> applyF (wui "wSelect")
+                 map (\e -> applyF (wuiModule "wSelect")
                               [constF (erdname, lowerFirst e++"ToShortView"),
                                CVar (1, lowerFirst $ e ++ "List")])
                      manyToOneEntities ++
                  map (\e -> 
-                  applyF (wui "wMultiCheckSelect")
+                  applyF (wuiModule "wMultiCheckSelect")
                    [CLambda [CPVar (1, lowerFirst e)]
                       (list2ac [
                         applyF (html "htxt") [
@@ -200,7 +199,7 @@ wuiType _ (Entity entityName attrlist) relationships allEntities =
     (viewModuleName entityName, "w"++entityName++"Type") 2 Public
     (
       foldr CFuncType
-      (applyTC ("WUI", "WuiSpec") [
+      (applyTC (wuiModule "WuiSpec") [
         if null manyToManyEntities
         then ctvar entityName
         else
@@ -223,7 +222,7 @@ wuiType _ (Entity entityName attrlist) relationships allEntities =
         (map (\e -> CPVar (1, lowerFirst $ e++"List"))
              (manyToOneEntities ++ manyToManyEntities))
       )
-      (applyF (wui "transformWSpec") [
+      (applyF (wuiModule "transformWSpec") [
             tupleExpr
             [
              applyF (viewModuleName entityName, "tuple2"++entityName)
@@ -237,162 +236,6 @@ wuiType _ (Entity entityName attrlist) relationships allEntities =
           ]
         )]
 
-
-createView :: ViewGenerator
-createView _ (Entity entityName attrlist) relationships allEntities =
-  let
-    manyToManyEntities = manyToMany allEntities (Entity entityName attrlist)
-    manyToOneEntities  = manyToOne (Entity entityName attrlist) relationships
-    infovar            = (0, "_")
-  in
-    viewFunction 
-      ("Supplies a WUI form to create a new "++entityName++" entity.\n"++
-       "Takes default values to be prefilled in the form fields.")
-      entityName "create" 3
-      ( -- function type
-       userSessionInfoType ~>
-       (foldr CFuncType viewBlockType (
-          (map attrType attrlist) ++
-          (map ctvar manyToOneEntities) ++ -- defaults for n:1
-          (map (\e -> listType (ctvar e)) manyToManyEntities) ++ -- defaults for n:m
-          (map (\e -> listType (ctvar e)) (manyToOneEntities ++ manyToManyEntities)) ++ -- possible values
-          [entityInterface attrlist manyToOneEntities manyToManyEntities
-           ~> controllerType,
-           controllerType]))
-      )
-      [simpleRule
-        ( -- params
-          CPVar infovar :
-          (map (\ ((Attribute name _ _ _), varId) ->
-                        CPVar(varId,("default"++name)))
-               (zip attrlist [1..])) ++
-          (map (\ (name, varId) -> CPVar(varId,("default"++name)))
-               (zip manyToOneEntities [1..])) ++
-          (map (\ (name, varId) -> CPVar(varId,("default"++name++"s")))
-               (zip manyToManyEntities [1..])) ++
-          (map (\ (name, varId) -> CPVar(varId,("possible"++name++"s")))
-               (zip (manyToOneEntities++manyToManyEntities) [1..])) ++
-          [CPVar (100, "controller"), CPVar (101, "cancelcontroller")]
-        )
-        (applyF (spiceyModule,"renderWuiForm")
-           [applyF (viewModuleName entityName, "w"++entityName)
-              (map (\ (name, varId) -> CVar (varId,("possible"++name++"s")))
-                   (zip (manyToOneEntities++manyToManyEntities) [1..])),
-            tupleExpr (
-                    (map (\ ((Attribute name _ _ _), varId) ->
-                                CVar(varId,("default"++name)))
-                         (zip attrlist [1..])) ++
-                    (map (\ (name, varId) -> CVar(varId,("default"++name)))
-                         (zip manyToOneEntities [1..])) ++
-                    (map (\ (name, varId) -> CVar(varId,"default"++name++"s"))
-                         (zip manyToManyEntities [1..]))),
-            CVar (100, "controller"),
-            CVar (101, "cancelcontroller"),
-            string2ac ("Create new "++entityName),
-            string2ac "create"]
-          )]
-      
-editView :: ViewGenerator
-editView erdname (Entity entityName attrlist) relationships allEntities =
-  let
-    manyToManyEntities = manyToMany allEntities (Entity entityName attrlist)
-    manyToOneEntities  = manyToOne (Entity entityName attrlist) relationships
-    infovar            = (0, "_")
-  in
-    viewFunction 
-      ("Supplies a WUI form to edit the given "++entityName++" entity.\n"++
-       "Takes also associated entities and a list of possible associations\n"++
-       "for every associated entity type.")
-      entityName "edit" 3
-      ( -- function type
-       userSessionInfoType ~>
-       (foldr CFuncType viewBlockType (
-          [tupleType ([baseType (erdname, entityName)] ++
-                      map (\name -> listType (ctvar name)) manyToManyEntities)
-          ] ++
-          (map ctvar manyToOneEntities) ++ -- defaults for n:1
-          (map (\e -> listType (ctvar e))
-               (manyToOneEntities ++ manyToManyEntities)) ++ -- possible values
-          [tupleType ([baseType (erdname, entityName)] ++
-                       map (\name -> listType (ctvar name)) manyToManyEntities)
-           ~> controllerType,
-           controllerType]))
-      )
-      [simpleRule
-        ( -- params
-         CPVar infovar :
-         [tuplePattern
-             ([CPVar (1, lowerFirst entityName)] ++
-              (map (\name -> CPVar (1, lowerFirst (name++"s")))
-                   manyToManyEntities)
-             )] ++
-          (map (\ (name, varId) -> CPVar(varId,("related"++name)))
-               (zip manyToOneEntities [2..])) ++
-          (map (\ (name, varId) -> CPVar(varId,("possible"++name++"s")))
-               (zip (manyToOneEntities++manyToManyEntities) [2..])) ++
-          [CPVar (1, "controller"), CPVar (102, "cancelcontroller")]
-        )
-        (applyF (spiceyModule,"renderWuiForm")
-             [applyF (viewModuleName entityName, "w"++entityName++"Type") (
-               [cvar (lowerFirst entityName)] ++
-                --(map (\ (name, varId) -> CVar(varId,((lowerFirst name)++"s"))) (zip manyToManyEntities [2..])) ++
-               (map (\ (name, varId) -> CVar(varId,("related"++name)))
-                    (zip manyToOneEntities [2..])) ++
-               (map (\ (name, varId) -> CVar(varId,("possible"++name++"s")))
-                    (zip (manyToOneEntities++manyToManyEntities) [2..]))
-               ),
-              tupleExpr ([CVar (1, lowerFirst entityName)] ++
-                         map (\name -> CVar (1, lowerFirst (name++"s")))
-                             manyToManyEntities),
-              CVar (1, "controller"),
-              CVar (102, "cancelcontroller"),
-              string2ac ("Edit "++entityName),
-              string2ac "change"]
-          )]
-
-blankView :: ViewGenerator
-blankView _ (Entity entityName attrlist) relationships allEntities =
-  let
-    manyToManyEntities = manyToMany allEntities (Entity entityName attrlist)
-    manyToOneEntities  = manyToOne (Entity entityName attrlist) relationships
-    withCTime          = hasDateAttribute attrlist
-    infovar            = (0, "sinfo")
-  in
-    viewFunction
-      ("Supplies a WUI form to create a new "++entityName++" entity.\n"++
-       "The fields of the entity have some default values.")
-      entityName "blank" 3
-      ( -- function type
-       userSessionInfoType ~>
-       foldr CFuncType viewBlockType (
-          (if withCTime then [baseType ("Time","ClockTime")] else []) ++
-          (map (\e -> listType (ctvar e))
-               (manyToOneEntities ++ manyToManyEntities)) ++ -- possible values
-          [entityInterface attrlist manyToOneEntities manyToManyEntities
-           ~> controllerType,
-           controllerType])
-      )
-      [simpleRule
-        ( -- params
-         CPVar infovar :
-         (if withCTime then [CPVar (0,"ctime")] else []) ++
-         (map (\ (name, varId) -> CPVar(varId,("possible"++name++"s")))
-              (zip (manyToOneEntities++manyToManyEntities) [2..])) ++
-         [CPVar (1, "controller"), CPVar (2, "cancelcontroller")]
-        )
-        (applyF (viewFunctionName entityName "create") 
-              (CVar infovar :
-               (attrDefaultValues (CVar (0,"ctime")) attrlist) ++
-               (map (\ (name, varId) ->
-                           applyF (pre "head")
-                                  [CVar (varId,("possible"++name++"s"))])
-                    (zip manyToOneEntities [2..])) ++
-               (map (\_ -> list2ac []) (zip manyToManyEntities [2..])) ++
-               (map (\ (name, varId) -> CVar (varId,("possible"++name++"s")))
-                    (zip (manyToOneEntities++manyToManyEntities) [2..])) ++
-               [CVar (1, "controller"), CVar (1, "cancelcontroller")]
-              )
-          )]
 
 -- Generate function to compare to entities in lexicographic order.
 -- To avoid useless component comparisons, only the first five non-key
@@ -560,7 +403,3 @@ entityInterface attrlist manyToOne manyToMany =
   tupleType (map attrType attrlist ++
              map ctvar manyToOne ++
              map (\e -> listType (ctvar e)) manyToMany)
-
--- Type "UserSessionInfo"
-userSessionInfoType :: CTypeExpr
-userSessionInfoType = baseType (sessionInfoModule,"UserSessionInfo")

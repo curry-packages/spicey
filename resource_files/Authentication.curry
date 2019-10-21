@@ -13,7 +13,7 @@ module System.Authentication (
  ) where
 
 import System.SessionInfo
-import System.Crypto
+import Crypto.Hash
 
 --------------------------------------------------------------------------
 -- Operations for hashing.

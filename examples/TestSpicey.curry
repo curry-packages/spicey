@@ -19,16 +19,19 @@ compileSpiceyApplication erdname = do
   setCurrentDirectory testdir
   system $ spiceup ++ " " ++
            packagePath </> "examples" </> erdname ++ "ERD.curry"
+  let makecall = "make WEBSERVERDIR=/tmp"
   putStrLn $ "Compiling Spicey application in directory '" ++ testdir ++ "'..."
-  ecode <- system $ "cd " ++ erdname ++ " && make install && " ++
-                    "make CURRYOPTIONS=\":set parser -Wnone\" compile"
+  ecode <- system $ "cd " ++ erdname ++ " && " ++
+                    makecall ++ " install && " ++
+                    makecall ++ " CURRYOPTIONS=\":set parser -Wnone\" compile"
   setCurrentDirectory curdir
   system $ "/bin/rm -rf " ++ testdir
   return ecode
 
+-- Compile the Blog example.
 testCompileBlog :: PropIO
 testCompileBlog = compileSpiceyApplication "Blog"  `returns` 0
 
--- Omitted due to bug in controller generation:
---testCompileUni :: PropIO
---testCompileUni = compileSpiceyApplication "Uni"  `returns` 0
+-- Compile the Uni example.
+testCompileUni :: PropIO
+testCompileUni = compileSpiceyApplication "Uni"  `returns` 0

@@ -5,7 +5,7 @@
 module Main where
 
 import HTML.Base
-import WUI
+import HTML.WUI
 
 import Config.ControllerMapping
 import Config.RoutesData
@@ -13,20 +13,18 @@ import System.Routes
 import System.Processes
 import System.Spicey
 
-
-dispatcher :: IO HtmlForm
+dispatcher :: IO HtmlPage
 dispatcher = do
   -- get url
   (url,ctrlparams) <- getControllerURL
   
   controller <- nextControllerRefInProcessOrForUrl url >>=
-                maybe (displayError "Illegal URL!")
-                      getController
+                maybe displayUrlError getController
 
-  form <- getForm controller
+  page <- getPage controller
   saveLastUrl (url ++ concatMap ("/"++) ctrlparams)
-  return form
+  return page
 
 --- Main function: call the dispatcher
-main :: IO HtmlForm
+main :: IO HtmlPage
 main = dispatcher

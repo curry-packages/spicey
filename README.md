@@ -34,14 +34,16 @@ To generate an application, follow the steps below.
 3. Change into the generated directory containing all sources as a
    Curry package, e.g., by `cd Blog`.
 
-4. Install all required packages by `make install`.
+4. Define in the Makefile the variable WEBSERVERDIR (and possibly
+   other variables, like SYSTEM or CURRYOPTIONS).
 
-5. Compile the generated programs by `make compile`.
+5. Install all required packages by `make install`.
 
-6. Configure the Makefile (variable WEBSERVERDIR) and execute
-   `make deploy` to deploy the web application.
+6. Compile the generated programs by `make compile`.
 
-7. After the successful compilation, the application is executable
+7. Execute `make deploy` to deploy the web application.
+
+8. After the successful compilation, the application is executable
    in a web browser by loading `<URL of web dir>/spicey.cgi`.
 
 Note that the database is generated with the `cdbi` package.

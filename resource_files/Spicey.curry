@@ -4,17 +4,14 @@
 --------------------------------------------------------------------------
 
 module System.Spicey (
-  module System, 
-  module HTML.Base, 
-  module ReadNumeric, 
   Controller, EntityController(..), applyControllerOn,
   nextController, nextControllerForData,
   confirmDeletionPage,
   transactionController,
   getControllerURL,getControllerParams, showControllerURL,
-  getForm, wDateType, wBoolean, wUncheckMaybe, wFloat,
+  getPage, wDateType, wBoolean, wUncheckMaybe, wFloat,
   displayError, displayUrlError, cancelOperation,
-  renderWuiForm, renderLabels,
+  renderWUI, renderLabels,
   nextInProcessOr,
   stringToHtml, maybeStringToHtml,
   intToHtml,maybeIntToHtml, floatToHtml, maybeFloatToHtml,
@@ -25,26 +22,24 @@ module System.Spicey (
   saveLastUrl, getLastUrl, getLastUrls
   ) where
 
-import Char (isSpace,isDigit)
+import Char         ( isSpace, isDigit )
 import Global
-import ReadNumeric
-import ReadShowTerm(readsQTerm)
-import System
+import ReadShowTerm ( readsQTerm )
 import Time
 
 import Database.CDBI.Connection ( SQLResult )
 import HTML.Base
+import HTML.Session
 import HTML.Styles.Bootstrap3
-import WUI
+import HTML.WUI
 
+import Config.Storage
 import Config.UserProcesses
 import System.Routes
 import System.Processes
-import System.Session
 import System.Authentication
 
----------------- vvvv -- Framework functions -- vvvv -----------------------
-
+--------------------------------------------------------------------------
 -- a viewable can be turned into a representation which can be displayed
 -- as interface
 -- here: a representation of a HTML page
@@ -72,16 +67,17 @@ applyControllerOn Nothing _ _ = displayUrlError
 applyControllerOn (Just userkey) getuser usercontroller =
   getuser userkey >>= usercontroller
 
-nextController :: Controller -> _ -> IO HtmlForm
+nextController :: Controller -> _ -> IO HtmlPage
 nextController controller _ = do
   view <- controller
-  getForm view
+  getPage view
 
 -- for WUIs
-nextControllerForData :: (a -> Controller) -> a -> IO HtmlForm
+nextControllerForData :: (a -> Controller) -> a -> IO HtmlPage
 nextControllerForData controller param = do
   view <- controller param
-  getForm view
+  getPage view
+
 
 --- Generates a page to ask the user for a confirmation to delete an entity
 --- specified in the controller URL (of the form "entity/delete/key/...").
@@ -98,7 +94,7 @@ confirmDeletionPage _ question = do
       [h3 [htxt question],
        par [hrefButton (showControllerURL entity ("destroy":args)) [htxt "Yes"],
             nbsp,
-            hrefButton (showControllerURL entity ("show" : args)) [htxt "No"]]]
+            hrefButton (showControllerURL entity ["list"]) [htxt "No"]]]
     _ -> displayUrlError
 
 
@@ -161,28 +157,22 @@ showControllerURL ctrlurl params = '?' : ctrlurl ++ concatMap ('/':) params
 
 --------------------------------------------------------------------------
 --- Standard rendering for WUI forms to edit data.
---- @param wuispec    - the associated WUI specification
---- @param initdata   - initial data to be prefilled in the form
---- @param ctrl       - the controller that handles the submission of the data
---- @param cancelctrl - the controller called if submission is cancelled
+--- @param sinfo      - the UserSessionInfo to select the language
 --- @param title      - the title of the WUI form
 --- @param buttontag  - the text on the submit button
-renderWuiForm :: WuiSpec a -> a -> (a -> Controller) -> Controller
-              -> String -> String -> [HtmlExp]
-renderWuiForm wuispec initdata controller cancelcontroller title buttontag =
-  wuiframe hexp handler
- where
-  wuiframe wuihexp hdlr =
-    [h1 [htxt title],
-     blockstyle "editform" [wuihexp],
-     wuiHandler2button buttontag hdlr `addClass` "btn btn-primary",
-     defaultButton "cancel"
-                   (nextController (cancelOperation >> cancelcontroller))]
-      
-  (hexp,handler) = wuiWithErrorForm wuispec
-                     initdata
-                     (nextControllerForData controller)
-                     (\he whdlr -> getForm (wuiframe he whdlr))
+--- @param cancelctrl - the controller called if submission is cancelled
+--- @param envpar     - environment parameters (e.g., user session data)
+--- @param hexp       - the HTML expression representing the WUI form
+--- @param handler    - the handler for submitting data
+renderWUI :: UserSessionInfo -> String -> String -> Controller
+          -> a -> HtmlExp -> (CgiEnv -> Controller) -> [HtmlExp]
+renderWUI _ title buttontag cancelctrl _ hexp handler =
+  [h1 [htxt title],
+   hexp,
+   breakline,
+   primButton buttontag (\env -> handler env >>= getPage),
+   defaultButton "Cancel" (nextController (cancelOperation >> cancelctrl))]
+
 
 --- A WUI for manipulating CalendarTime entities.
 --- It is based on a WUI for dates, i.e., the time is ignored.
@@ -255,24 +245,22 @@ spiceyFooter =
         htxt "Framework"]]
         
 --- Transforms a view into an HTML form by adding the basic page layout.
-getForm :: ViewBlock -> IO HtmlForm
-getForm viewblock = case viewblock of
+getPage :: ViewBlock -> IO HtmlPage
+getPage viewblock = case viewblock of
   [HtmlText ""] ->
-       return $ HtmlForm "forward to Spicey"
-                  [formMetaInfo [("http-equiv","refresh"),
+       return $ HtmlPage "forward to Spicey"
+                  [pageMetaInfo [("http-equiv","refresh"),
                                  ("content","1; url=spicey.cgi")]]
                   [par [htxt "You will be forwarded..."]]
   _ -> do
-    routemenu <- getRouteMenu
-    msg       <- getPageMessage
-    login     <- getSessionLogin
-    lasturl   <- getLastUrl
-    cookie    <- sessionCookie
-    return (bootstrapForm "." ["bootstrap.min","spicey"] spiceyTitle
-               spiceyHomeBrand routemenu (rightTopMenu login)
-               0 []  [h1 [htxt spiceyTitle]]
-               (messageLine msg lasturl : viewblock ) spiceyFooter
-              `addFormParam` cookie)
+    routemenu  <- getRouteMenu
+    msg        <- getPageMessage
+    login      <- getSessionLogin
+    lasturl    <- getLastUrl
+    withSessionCookie $ bootstrapPage "." ["bootstrap.min","spicey"]
+      spiceyTitle spiceyHomeBrand routemenu (rightTopMenu login)
+      0 []  [h1 [htxt spiceyTitle]]
+      (messageLine msg lasturl : viewblock ) spiceyFooter
  where
   messageLine msg lasturl =
     if null msg
@@ -378,13 +366,13 @@ pageMessage = global emptySessionStore Temporary
 --- Gets the page message and delete it.
 getPageMessage :: IO String
 getPageMessage = do
-  msg <- getSessionData pageMessage
+  msg <- getSessionData pageMessage ""
   removeSessionData pageMessage
-  return (maybe "" id msg)
+  return msg
 
 --- Set the page message of the current session.
 setPageMessage :: String -> IO ()
-setPageMessage msg = putSessionData msg pageMessage
+setPageMessage msg = putSessionData pageMessage msg
 
 --------------------------------------------------------------------------
 -- Another example for using sessions.
@@ -396,7 +384,7 @@ lastUrls = global emptySessionStore Temporary
 
 --- Gets the list of URLs of the current session.
 getLastUrls :: IO [String]
-getLastUrls = getSessionData lastUrls >>= return . maybe [] id
+getLastUrls = getSessionData lastUrls []
 
 --- Gets the last URL of the current session (or "?").
 getLastUrl :: IO String
@@ -407,6 +395,6 @@ getLastUrl = do urls <- getLastUrls
 saveLastUrl :: String -> IO ()
 saveLastUrl url = do
   urls <- getLastUrls
-  putSessionData (url:urls) lastUrls
+  putSessionData lastUrls (url:urls)
 
 --------------------------------------------------------------------------

@@ -7,10 +7,11 @@
     "dependencies": {
         "base"       : ">= 1.0.0, < 2.0.0",
         "cdbi"       : ">= 2.0.0",
-        "html"       : ">= 2.1.0",
+        "cryptohash" : ">= 0.0.1",
+        "html2"      : ">= 0.0.1",
         "random"     : ">= 0.0.1",
         "searchtree" : ">= 0.0.1",
-        "wui"        : ">= 2.0.0"
+        "wui2"       : ">= 0.0.1"
     },
     "compilerCompatibility": {
         "pakcs": ">= 2.0.0",

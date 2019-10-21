@@ -2,9 +2,10 @@
 
 module Spicey.ControllerGeneration where
 
+import Char(toLower)
+
 import AbstractCurry.Types
 import AbstractCurry.Build
-import Char(toLower)
 import Database.ERD
 import Database.ERD.Goodies
 
@@ -23,32 +24,40 @@ generateControllersForEntity :: String -> [Entity] -> Entity
                              -> [Relationship]
                              -> CurryProg
 generateControllersForEntity erdname allEntities
-                             entity@(Entity ename _) relationships =
- CurryProg
-  (controllerModuleName ename)
-  -- imports:
-  [ "Maybe", "Time", "HTML.Base"
-  , erdname
-  , "Config.UserProcesses"
-  , sessionInfoModule, authorizationModule, enauthModName, spiceyModule
-  , entitiesToHtmlModule erdname
-  , viewModuleName ename
-  ]
-  Nothing -- defaultdecl
-  [] -- classdecls
-  [controllerInstDecl erdname entity] -- instdecls
-  [newEntityType erdname entity relationships allEntities] -- typedecls
-  -- functions
-  (
+                             entity@(Entity ename attrlist) relationships =
+ let noKeyAttrs = filter (\a -> notKey a && notPKey a) attrlist
+ in
+  CurryProg
+   (controllerModuleName ename)
+   -- imports:
+   [ "Global", "Maybe", "Time"
+   , "HTML.Base", "HTML.Session", "HTML.WUI"
+   , erdname
+   , "Config.Storage" , "Config.UserProcesses"
+   , sessionInfoModule, authorizationModule, enauthModName, spiceyModule
+   , entitiesToHtmlModule erdname
+   , viewModuleName ename
+   ]
+   Nothing -- defaultdecl
+   [] -- classdecls
+   [controllerInstDecl erdname entity] -- instdecls
+   [newEntityType erdname entity relationships allEntities] -- typedecls
+   -- functions
+   (
     [
      -- controller for dispatching to various controllers:
      mainController erdname entity relationships allEntities,
      -- controller for providing a page to enter new entity data:
-     newController erdname entity relationships allEntities,
+     --newController erdname entity relationships allEntities,
+     newController erdname (Entity ename noKeyAttrs) relationships allEntities,
+     newForm  erdname (Entity ename noKeyAttrs) relationships allEntities,
+     newStore erdname (Entity ename noKeyAttrs) relationships allEntities,
      -- transaction for saving data in new entity:
      createTransaction erdname entity relationships allEntities,
      -- controller to show an existing record in a form to edit
      editController erdname entity relationships allEntities,
+     editForm  erdname (Entity ename noKeyAttrs) relationships allEntities,
+     editStore erdname (Entity ename noKeyAttrs) relationships allEntities,
      -- transaction to update a record with the given data
      updateTransaction erdname entity relationships allEntities,
      -- controller to delete an entity with the given data
@@ -61,16 +70,16 @@ generateControllersForEntity erdname allEntities
      listController erdname entity relationships allEntities,
      -- controller to show entites:
      showController erdname entity relationships allEntities
-   ] ++ 
-   manyToManyAddOrRemove erdname entity (manyToMany allEntities entity)
-                         allEntities ++
+    ] ++ 
+    manyToManyAddOrRemove erdname entity (manyToMany allEntities entity)
+                          allEntities ++
     --(getAll erdname entity (manyToOne entity relationships) allEntities) ++
     --(getAll erdname entity (manyToMany allEntities entity) allEntities) ++
     --(manyToManyGetRelated erdname entity (manyToMany allEntities entity) allEntities) ++
-    manyToOneGetRelated erdname entity (manyToOne entity relationships)
-                        allEntities relationships
-  )
-  [] -- opdecls
+     manyToOneGetRelated erdname entity (manyToOne entity relationships)
+                         allEntities relationships
+   )
+   [] -- opdecls
 
 
 -- Generates the instance declaration for a controller.
@@ -94,7 +103,8 @@ controllerInstDecl erdname (Entity entityName _) =
 
 -- erdname: name of the entity-relationship-specification
 -- entity: the entity to generate a controller for
-type ControllerGenerator = String -> Entity -> [Relationship] -> [Entity] -> CFuncDecl
+type ControllerGenerator = String -> Entity -> [Relationship] -> [Entity]
+                        -> CFuncDecl
 
 -- Generates the main controller that dispatches to the various
 -- subcontrollers according to the URL parameters.
@@ -132,7 +142,7 @@ mainController _ (Entity entityName _) _ _ =
 --- Generates a type alias for a "new entity" tuple type which is
 --- used to create and insert new entities (without an entity key).
 newEntityType :: String -> Entity -> [Relationship] -> [Entity] -> CTypeDecl
-newEntityType erdname (Entity entityName attrList) relationships allEntities =
+newEntityType _ (Entity entityName attrList) relationships allEntities =
   let notGeneratedAttributes = filter (\attr -> not (isForeignKey attr)
                                                 && notPKey attr)
                                       attrList
@@ -143,246 +153,419 @@ newEntityType erdname (Entity entityName attrList) relationships allEntities =
                    map ctvar manyToOneEntities ++
                    map (listType . ctvar) manyToManyEntities))
 
+------------------------------------------------------------------------------
 -- generates a controller to show a form to create a new entity
 -- the input is then passed to the create controller
 -- only has to call the blank entry form and pass the create controller
 newController :: ControllerGenerator
 newController erdname (Entity entityName attrList) relationships allEntities =
-  let
-    manyToManyEntities = manyToMany allEntities (Entity entityName attrList)
-    manyToOneEntities  = manyToOne (Entity entityName attrList) relationships
-    withCTime          = hasDateAttribute attrList
-    infovar            = (0,"sinfo")
-    ctimevar           = (1,"ctime")
-  in
-    controllerFunction 
-    ("Shows a form to create a new "++entityName++" entity.")
-    entityName "new" 0
-      controllerType -- function type
-      [ -- rules
-       simpleRule [] -- no arguments
-        (applyF (pre "$")
-            [applyF checkAuthorizationFunc
-              [applyF (enauthModName,lowerFirst entityName++"OperationAllowed")
-                [constF (authorizationModule,"NewEntity")]],
-             CLambda [CPVar infovar] $
-              CDoExpr (
-              (map 
-                (\ (ename, num) ->
-                   CSPat (CPVar (num,"all"++ename++"s")) 
-                         (applyF (erdname,"runQ")
-                                 [constF (erdname,"queryAll"++ename++"s")])
-                )
-                (zip (manyToOneEntities ++ manyToManyEntities) [2..])
-              ) ++
-              (if withCTime
-               then [CSPat (CPVar ctimevar)
-                           (constF ("Time","getClockTime"))]
-               else []) ++
-              [         
-                CSExpr (
-                  applyF (pre "return")
-                   [applyF (viewFunctionName entityName "blank")
-                     ([CVar infovar] ++
-                      (if withCTime then [CVar ctimevar] else []) ++
-                      map (\ (ename, num) -> CVar (num, "all"++ename++"s"))
-                           (zip (manyToOneEntities ++ manyToManyEntities)
-                                [2..]) ++
-                      [CLambda [CPVar (200,"entity")]
-                        (applyF (spiceyModule,"transactionController")
-                          [applyF (erdname,"runT")
-                            [applyF (transFunctionName entityName "create")
-                                    [CVar (200,"entity")]],
-                           applyF (spiceyModule,"nextInProcessOr")
-                                  [callEntityListController entityName,
-                                   constF (pre "Nothing")]]),
-                       callEntityListController entityName])
-                  ]
-                )
-              ]
-            )
-           ]
-          )]
+  controllerFunction 
+  ("Shows a form to create a new " ++ entityName ++ " entity.")
+  entityName "new" 0
+  controllerType -- function type
+  [simpleRule [] $ -- no arguments
+     applyF (pre "$")
+       [applyF checkAuthorizationFunc
+         [applyF (enauthModName, lowerFirst entityName ++ "OperationAllowed")
+           [constF (authorizationModule,"NewEntity")]],
+        CLambda [CPVar infovar] $
+         CDoExpr (
+         (map 
+           (\ (ename, num) ->
+              CSPat (CPVar (num,"all" ++ ename ++ "s")) 
+                    (applyF (erdname,"runQ")
+                            [constF (erdname,"queryAll" ++ ename ++ "s")])
+           )
+           (zip (manyToOneEntities ++ manyToManyEntities) [2..])
+         ) ++
+         (if withCTime
+          then [CSPat (CPVar ctimevar)
+                      (constF ("Time","getClockTime"))]
+          else []) ++
+         [CSExpr setParCall,         
+          CSExpr $ applyF (pre "return")
+            [list2ac [applyF (html "formExp")
+                        [constF (controllerFormName entityName "new")]]]
+         ])]]
+ where
+  manyToManyEntities = manyToMany allEntities (Entity entityName attrList)
+  manyToOneEntities  = manyToOne (Entity entityName attrList) relationships
+  withCTime          = hasDateAttribute attrList
+  infovar            = (0,"sinfo")
+  ctimevar           = (1,"ctime")
 
+  setParCall =
+    applyF (wuiModule "setParWuiStore")
+      [constF (controllerStoreName entityName "new"),
+       tupleExpr
+        ([CVar infovar] ++ 
+         map (\ (ename, num) -> CVar (num, "all" ++ ename ++ "s"))
+             (zip (manyToOneEntities ++ manyToManyEntities) [2 ..])),
+       tupleExpr $
+         attrDefaultValues (CVar (0,"ctime")) attrList ++
+         map (\ (name, varId) -> applyF (pre "head")
+                                   [CVar (varId,("all" ++ name ++ "s"))])
+             (zip manyToOneEntities [2..]) ++
+         map (\_ -> list2ac []) (zip manyToManyEntities [2..])
+      ]
+
+--- Generates the form definition to create a new entity.
+newForm :: String -> Entity -> [Relationship] -> [Entity] -> CFuncDecl
+newForm erdname entity@(Entity entityName attrlist) relationships allEntities =
+  cmtfunc ("A WUI form to create a new " ++ entityName ++ " entity.\n" ++
+           "The default values for the fields are stored in '" ++
+           snd (controllerStoreName entityName "new") ++ "'.")
+    (controllerFormName entityName "new") 0
+    Public
+    (emptyClassType $ applyTC (htmlModule "HtmlFormDef")
+        [newTupleType entity relationships allEntities])
+    [simpleRule []
+      (applyF (wuiModule "pwui2FormDef")
+        [string2ac $ showQName $ controllerFormName entityName "new",
+         constF (controllerStoreName entityName "new"),
+         wuiFun, storeFun, renderFun])]
+ where
+  manyToManyEntities = manyToMany allEntities (Entity entityName attrlist)
+  manyToOneEntities  = manyToOne (Entity entityName attrlist) relationships
+  arity1 = 1 + length manyToOneEntities + length manyToManyEntities
+
+  wuiFun =
+    CLambda
+      [tuplePattern
+        ([CPVar (1,"_")] ++
+         map (\ (name, varId) -> CPVar(varId,("possible"++name++"s")))
+             (zip (manyToOneEntities++manyToManyEntities) [2..]))] $
+      applyF (viewModuleName entityName, "w" ++ entityName)
+        (map (\ (name, varId) -> CVar(varId,("possible"++name++"s")))
+             (zip (manyToOneEntities ++ manyToManyEntities) [2..]) )
+
+  storeFun =
+    let entvar = (1, "entity")
+    in
+    CLambda [CPVar (0,"_"), CPVar entvar]
+      (applyF checkAuthorizationFunc
+         [applyF (enauthModName, lowerFirst entityName ++ "OperationAllowed")
+            [constF (authorizationModule,"NewEntity")],
+          CLambda [CPVar (0,"_")]
+            (applyF (spiceyModule,"transactionController")
+               [applyF (erdname,"runT")
+                  [applyF (transFunctionName entityName "create")
+                           [CVar entvar]],
+                applyF (spiceyModule,"nextInProcessOr")
+                  [callEntityListController entityName,
+                   constF (pre "Nothing")]])])
+
+  renderFun =
+    CLambda [tuplePattern
+               (map CPVar (sinfovar : map (\v -> (v,"_")) [2 .. arity1]))] $
+      applyF (spiceyModule,"renderWUI")
+        [CVar sinfovar,
+         string2ac $ "Create new " ++ entityName,
+         string2ac "Create",
+         constF (controllerFunctionName entityName "list"),
+         constF (pre "()")
+        ]
+   where sinfovar = (1, "sinfo")
+
+
+--- Generates the store for WUI to create a new entity.
+newStore :: String -> Entity -> [Relationship] -> [Entity] -> CFuncDecl
+newStore _ entity@(Entity entityName _) relationships allEntities =
+  cmtfunc "The data stored for executing the \"new entity\" WUI form."
+    (controllerStoreName entityName "new") 0
+    Private
+    (emptyClassType $ applyTC (globalModule "Global")
+      [applyTC (sessionModule "SessionStore")
+        [newTupleType entity relationships allEntities]])
+    [simpleRule []
+      (applyF (globalModule "global")
+        [constF (sessionModule "emptySessionStore"),
+         applyF (globalModule "Persistent")
+          [applyF (storageModule "inDataDir")
+            [string2ac $ "new" ++ entityName ++ "Store"]]])]
+
+
+--- Computes the tuple type of the data to be stored and manipulated
+--- by the WUI to create a new entity.
+newTupleType :: Entity -> [Relationship] -> [Entity] -> CTypeExpr
+newTupleType (Entity entityName attrlist) relationships allEntities =
+  tupleType
+    [tupleType $
+       [userSessionInfoType] ++
+       map (\e -> listType (ctvar e))
+           (manyToOneEntities ++ manyToManyEntities), -- possible values
+     applyTC (wuiModule "WuiStore")
+             [baseType (newEntityTypeName entityName)]]
+ where
+  manyToManyEntities = manyToMany allEntities (Entity entityName attrlist)
+  manyToOneEntities  = manyToOne (Entity entityName attrlist) relationships
+
+
+--- Generates a transaction to store a new entity.
 createTransaction :: ControllerGenerator
-createTransaction erdname (Entity entityName attrList) relationships allEntities =
-  let
-    noPKeys            = (filter notPKey attrList)
---    foreignKeys = (filter isForeignKey attrList)
-    notGeneratedAttributes = filter (\attr -> (not (isForeignKey attr))
-                                              && (notPKey attr))     attrList
-    parameterList      = map (\(Attribute name _ _ _) -> lowerFirst name)
-                             (filter (not . isForeignKey) noPKeys)
-    manyToManyEntities = manyToMany allEntities (Entity entityName attrList)
-    manyToOneEntities  = manyToOne (Entity entityName attrList) relationships
-  in
-    stCmtFunc
-    ("Transaction to persist a new "++entityName++" entity to the database.")
-    (transFunctionName entityName "create")
-    1 Private
-      (baseType (newEntityTypeName entityName)
-        ~> applyTC (dbconn "DBAction") [unitType])
-      [simpleRule 
-        [tuplePattern
-          (map (\ (param, varId) -> CPVar (varId, param)) 
-               (zip (parameterList ++ map lowerFirst manyToOneEntities ++
-                     map (\e -> (lowerFirst e) ++ "s") manyToManyEntities)
-                     [1..]))
-        ] -- parameter list for controller
-        (applyF (dbconn ">+=")
-           [applyF (entityConstructorFunction erdname (Entity entityName attrList) relationships) 
-                       (map (\ ((Attribute name dom key null), varId) -> 
-                          if (isForeignKey (Attribute name dom key null))
-                            then applyF (erdname, (lowerFirst (getReferencedEntityName dom))++"Key")
-                                        [CVar (varId, lowerFirst (getReferencedEntityName dom))]
-                            else let cv = CVar (varId, lowerFirst name)
-                                  in if hasDefault dom && not (isStringDom dom)
-                                        && not null
-                                     then applyF (pre "Just") [cv]
-                                     else cv)
-                          (zip noPKeys [1..])
-                        ),
-            CLambda [cpvar "newentity"]
-             (foldr1 (\a b -> applyF (dbconn ">+") [a,b])
-              (map (\name -> applyF (controllerModuleName entityName,
-                                     "add"++(linkTableName entityName name allEntities))
-                                    [cvar (lowerFirst name ++ "s"),
-                                     cvar "newentity"])
-                   manyToManyEntities ++
-               [applyF (pre "return") [constF (pre "()")]])
-             )
-           ]
-           )]
+createTransaction erdname (Entity entityName attrList)
+                  relationships allEntities = stCmtFunc
+  ("Transaction to persist a new " ++ entityName ++ " entity to the database.")
+  (transFunctionName entityName "create")
+  1 Private
+    (baseType (newEntityTypeName entityName)
+      ~> applyTC (dbconn "DBAction") [unitType])
+    [simpleRule 
+      [tuplePattern
+        (map (\ (param, varId) -> CPVar (varId, param)) 
+             (zip (parameterList ++ map lowerFirst manyToOneEntities ++
+                   map (\e -> (lowerFirst e) ++ "s") manyToManyEntities)
+                   [1..]))
+      ] -- parameter list for controller
+      (applyF (dbconn ">+=")
+         [applyF (entityConstructorFunction erdname (Entity entityName attrList) relationships) 
+                     (map (\ ((Attribute name dom key null), varId) -> 
+                        if (isForeignKey (Attribute name dom key null))
+                          then applyF (erdname, (lowerFirst (getReferencedEntityName dom))++"Key")
+                                      [CVar (varId, lowerFirst (getReferencedEntityName dom))]
+                          else let cv = CVar (varId, lowerFirst name)
+                                in if hasDefault dom && not (isStringDom dom)
+                                      && not null
+                                   then applyF (pre "Just") [cv]
+                                   else cv)
+                        (zip noPKeys [1..])
+                      ),
+          CLambda [cpvar "newentity"]
+           (foldr1 (\a b -> applyF (dbconn ">+") [a,b])
+            (map (\name -> applyF (controllerModuleName entityName,
+                                   "add"++(linkTableName entityName name allEntities))
+                                  [cvar (lowerFirst name ++ "s"),
+                                   cvar "newentity"])
+                 manyToManyEntities ++
+             [applyF (pre "return") [constF (pre "()")]])
+           )
+         ]
+         )]
+ where
+  noPKeys            = (filter notPKey attrList)
+  -- foreignKeys = (filter isForeignKey attrList)
+  -- notGeneratedAttributes = filter (\attr -> (not (isForeignKey attr))
+  --                                          && (notPKey attr))     attrList
+  parameterList      = map (\(Attribute name _ _ _) -> lowerFirst name)
+                           (filter (not . isForeignKey) noPKeys)
+  manyToManyEntities = manyToMany allEntities (Entity entityName attrList)
+  manyToOneEntities  = manyToOne (Entity entityName attrList) relationships
 
+------------------------------------------------------------------------------
+--- Generates a controller to edit an entity.
 editController :: ControllerGenerator
 editController erdname (Entity entityName attrList) relationships allEntities =
-  let
-    manyToManyEntities = manyToMany allEntities (Entity entityName attrList)
-    manyToOneEntities  = manyToOne (Entity entityName attrList) relationships
-    pvar               = (0, lowerFirst entityName ++ "ToEdit")
-    infovar            = (1, "sinfo")
-  in
-    controllerFunction
-    ("Shows a form to edit the given "++entityName++" entity.")
+  controllerFunction
+    ("Shows a form to edit the given " ++ entityName ++ " entity.")
     entityName "edit" 1
-      (baseType (erdname,entityName) ~> controllerType
-      )
-      [simpleRule [CPVar pvar] -- parameterlist for controller
-        (applyF (pre "$")
-            [applyF checkAuthorizationFunc
-              [applyF (enauthModName,lowerFirst entityName++"OperationAllowed")
-                [applyF (authorizationModule,"UpdateEntity") [CVar pvar]]],
-             CLambda [CPVar infovar] $
-              CDoExpr (
-              (map 
-                (\ (ename, num) ->
-                      CSPat (CPVar (num,"all"++ename++"s")) 
-                            (applyF (erdname,"runQ")
-                                    [constF (erdname,"queryAll"++ename++"s")])
-                )
-                (zip (manyToOneEntities ++ manyToManyEntities) [1..])
-              ) ++
-              (map 
-                (\ (ename, num) -> CSPat (CPVar (num,(lowerFirst (fst $ relationshipName entityName ename relationships))++ename)) 
-                                (
-                                  applyF (erdname,"runJustT") [
-                                    applyF (controllerModuleName entityName,"get"++(fst $ relationshipName entityName ename relationships)++ename) [CVar pvar]
-                                  ]
-                                )
-                )
-                (zip (manyToOneEntities) [1..])
-              ) ++
-              (map 
-                (\ (ename, num) -> CSPat (CPVar (num,(lowerFirst (linkTableName entityName ename allEntities))++ename++"s")) 
-                                (
-                                  applyF (erdname,"runJustT") [
-                                    applyF (controllerModuleName entityName,"get"++entityName++ename++"s") [CVar pvar]
-                                  ]
-                                )
-                )
-                (zip (manyToManyEntities) [1..])
-              ) ++
-              [CSExpr (
-                 applyF (pre "return")
-                  [applyF (viewFunctionName entityName "edit")
-                     ([CVar infovar,
-                       tupleExpr
-                        (
-                          [CVar pvar] ++ 
-                          (map (\ (ename, num) ->
-                                 CVar (num,lowerFirst (linkTableName entityName
-                                                       ename allEntities)
-                                        ++ename++"s"))
-                               (zip (manyToManyEntities) [1..]))
-                        )
-                      ] ++
-                      (map 
-                        (\ (ename, num) ->
-                               CVar (num,lowerFirst (fst $ relationshipName
-                                            entityName ename relationships)
-                                         ++ ename)) 
-                        (zip (manyToOneEntities) [1..])
-                      ) ++
-                      ((map (\ (ename, num) -> CVar (num, "all"++ename++"s"))
-                            (zip (manyToOneEntities ++ manyToManyEntities)
-                                 [1..])) ++
-                      [CLambda [CPVar (200,"entity")]
-                        (applyF (spiceyModule,"transactionController")
-                          [applyF (erdname,"runT")
-                            [applyF (transFunctionName entityName "update")
-                                    [CVar (200,"entity")]],
-                           applyF (spiceyModule,"nextInProcessOr")
-                                  [callEntityListController entityName,
-                                   constF (pre "Nothing")]]),
-                       callEntityListController entityName]
-                      )
-                    )
-                  ]
-                )
-              ]
-            )
-           ]
-          )]
+    (baseType (erdname,entityName) ~> controllerType)
+    [simpleRule [CPVar pvar] -- parameterlist for controller
+      (applyF (pre "$")
+        [applyF checkAuthorizationFunc
+          [applyF (enauthModName,lowerFirst entityName++"OperationAllowed")
+            [applyF (authorizationModule,"UpdateEntity") [CVar pvar]]],
+         CLambda [CPVar infovar] $
+           CDoExpr (
+            map (\ (ename, num) ->
+                    CSPat (CPVar (num,"all"++ename++"s")) 
+                          (applyF (erdname,"runQ")
+                                  [constF (erdname,"queryAll"++ename++"s")]))
+               (zip (manyToOneEntities ++ manyToManyEntities) [1..]) ++
+            map 
+              (\ (ename, num) -> CSPat (CPVar (num,(lowerFirst (fst $ relationshipName entityName ename relationships))++ename)) 
+                              (
+                                applyF (erdname,"runJustT") [
+                                  applyF (controllerModuleName entityName,"get"++(fst $ relationshipName entityName ename relationships)++ename) [CVar pvar]
+                                ]
+                              )
+              )
+              (zip manyToOneEntities [1..]) ++
+            map 
+              (\ (ename, num) -> CSPat (CPVar (num,(lowerFirst (linkTableName entityName ename allEntities))++ename++"s")) 
+                              (
+                                applyF (erdname,"runJustT") [
+                                  applyF (controllerModuleName entityName,"get"++entityName++ename++"s") [CVar pvar]
+                                ]
+                              )
+              )
+              (zip manyToManyEntities [1..]) ++
+            [CSExpr setParCall,
+             CSExpr $ applyF (pre "return")
+               [list2ac [applyF (html "formExp")
+                           [constF (controllerFormName entityName "edit")]]]
+            ])])]
+ where
+  manyToManyEntities = manyToMany allEntities (Entity entityName attrList)
+  manyToOneEntities  = manyToOne (Entity entityName attrList) relationships
+  pvar               = (0, lowerFirst entityName ++ "ToEdit")
+  infovar            = (1, "sinfo")
 
+  setParCall =
+    applyF (wuiModule "setParWuiStore")
+      [constF (controllerStoreName entityName "edit"),
+       tupleExpr
+        ([CVar infovar, CVar pvar] ++ 
+         map (\ (ename, num) ->
+               CVar (num,lowerFirst (fst $ relationshipName
+                            entityName ename relationships)
+                         ++ ename))
+             (zip manyToOneEntities [1..]) ++
+         map (\ (ename, num) -> CVar (num, "all"++ename++"s"))
+             (zip (manyToOneEntities ++ manyToManyEntities)
+                  [1..])),
+       tupleExpr
+        ([CVar pvar] ++ 
+          (map (\ (ename, num) ->
+                 CVar (num,lowerFirst (linkTableName entityName
+                                       ename allEntities)
+                        ++ename++"s"))
+               (zip manyToManyEntities [1..])))]
+
+
+--- Generates the form definition to edit an entity.
+editForm :: String -> Entity -> [Relationship] -> [Entity] -> CFuncDecl
+editForm erdname entity@(Entity entityName attrlist) relationships allEntities =
+  cmtfunc ("A WUI form to edit a " ++ entityName ++ " entity.\n" ++
+           "The default values for the fields are stored in '" ++
+           snd (controllerStoreName entityName "edit") ++ "'.")
+    (controllerFormName entityName "edit") 0
+    Public
+    (emptyClassType $ applyTC (htmlModule "HtmlFormDef")
+      [editTupleType erdname entity relationships allEntities])
+    [simpleRule []
+      (applyF (wuiModule "pwui2FormDef")
+        [string2ac $ showQName $ controllerFormName entityName "edit",
+         constF (controllerStoreName entityName "edit"),
+         wuiFun, storeFun, renderFun])]
+ where
+  manyToManyEntities = manyToMany allEntities (Entity entityName attrlist)
+  manyToOneEntities  = manyToOne (Entity entityName attrlist) relationships
+  arity1 = 2 + length manyToOneEntities * 2 + length manyToManyEntities
+
+  wuiFun =
+    CLambda
+      [tuplePattern
+        ([CPVar (1,"_"), CPVar (1, lowerFirst entityName)] ++
+         map (\ (name, varId) -> CPVar(varId,("related"++name)))
+             (zip manyToOneEntities [2..]) ++
+         map (\ (name, varId) -> CPVar(varId,("possible"++name++"s")))
+             (zip (manyToOneEntities++manyToManyEntities) [2..]))] $
+      applyF (viewModuleName entityName, "w" ++ entityName ++ "Type")
+        ([cvar (lowerFirst entityName)] ++
+         map (\ (name, varId) -> CVar(varId,("related"++name)))
+             (zip manyToOneEntities [2..]) ++
+         map (\ (name, varId) -> CVar(varId,("possible"++name++"s")))
+             (zip (manyToOneEntities++manyToManyEntities) [2..]) )
+
+  storeFun =
+    let evar   = (1, lowerFirst entityName ++ "ToEdit")
+        entvar = (2, "entity")
+    in
+    CLambda [CPVar (0,"_"),
+             CPAs entvar
+               (tuplePattern
+                  ([CPVar evar] ++ 
+                   map (\i -> CPVar (i+2,"_"))
+                       [1 .. length manyToManyEntities]))]
+      (applyF checkAuthorizationFunc
+         [applyF (enauthModName,lowerFirst entityName++"OperationAllowed")
+            [applyF (authorizationModule,"UpdateEntity") [CVar evar]],
+          CLambda [CPVar (0,"_")]
+            (applyF (spiceyModule,"transactionController")
+               [applyF (erdname,"runT")
+                  [applyF (transFunctionName entityName "update")
+                           [CVar entvar]],
+                applyF (spiceyModule,"nextInProcessOr")
+                  [callEntityListController entityName,
+                   constF (pre "Nothing")]])])
+
+  renderFun =
+    CLambda [tuplePattern
+               (map CPVar (sinfovar : map (\v -> (v,"_")) [2 .. arity1]))] $
+      applyF (spiceyModule,"renderWUI")
+        [CVar sinfovar,
+         string2ac $ "Edit " ++ entityName,
+         string2ac "Change",
+         constF (controllerFunctionName entityName "list"),
+         constF (pre "()")
+        ]
+   where sinfovar = (1, "sinfo")
+
+
+--- Generates the store for WUI to edit an entity.
+editStore :: String -> Entity -> [Relationship] -> [Entity] -> CFuncDecl
+editStore erdname entity@(Entity entityName _) relationships allEntities =
+  cmtfunc "The data stored for executing the edit WUI form."
+    (controllerStoreName entityName "edit") 0
+    Private
+    (emptyClassType $ applyTC (globalModule "Global")
+      [applyTC (sessionModule "SessionStore")
+        [editTupleType erdname entity relationships allEntities]])
+    [simpleRule []
+      (applyF (globalModule "global")
+        [constF (sessionModule "emptySessionStore"),
+         applyF (globalModule "Persistent")
+          [applyF (storageModule "inDataDir")
+            [string2ac $ "edit" ++ entityName ++ "Store"]]])]
+
+--- Computes the tuple type of the data to be stored and manipulated
+--- by the WUI to edit a new entity.
+editTupleType :: String -> Entity -> [Relationship] -> [Entity] -> CTypeExpr
+editTupleType erdname (Entity entityName attrlist) relationships allEntities =
+  tupleType
+    [tupleType $
+      [userSessionInfoType, baseType (erdname, entityName)] ++
+      map ctvar manyToOneEntities ++ -- defaults for n:1
+      map (\e -> listType (ctvar e))
+          (manyToOneEntities ++ manyToManyEntities), -- possible values
+     applyTC (wuiModule "WuiStore")
+      [tupleType $
+         [baseType (erdname, entityName)] ++
+         map (\name -> listType (ctvar name)) manyToManyEntities]]
+ where
+  manyToManyEntities = manyToMany allEntities (Entity entityName attrlist)
+  manyToOneEntities  = manyToOne (Entity entityName attrlist) relationships
+
+--- Generates the transaction to update an entity.
 updateTransaction :: ControllerGenerator
 updateTransaction erdname (Entity entityName attrList) _ allEntities =
- let manyToManyEntities = manyToMany allEntities (Entity entityName attrList)
-     -- manyToOneEntities = manyToOne (Entity entityName attrList) relationships
-     -- noPKeys = (filter notPKey attrList)
-  in
-    stCmtFunc
-    ("Transaction to persist modifications of a given "++entityName++" entity\n"++
-     "to the database.")
+  stCmtFunc
+    ("Transaction to persist modifications of a given " ++ entityName ++
+     " entity\nto the database.")
     (transFunctionName entityName "update")
     2 Private
-      (tupleType ([baseType (erdname, entityName)] ++
-                   map (\name -> listType (ctvar name)) manyToManyEntities)
-        ~> applyTC (dbconn "DBAction") [baseType (pre "()")]
-      )
-      [simpleRule 
-        [tuplePattern
-               ([CPVar (0, lowerFirst entityName)] ++
-                (map (\ (param, varId) -> CPVar (varId, param)) 
-                     (zip (map (\e -> lowerFirst e ++ "s" ++
-                                      linkTableName entityName e allEntities)
-                               manyToManyEntities)
-                          [1..])))
-        ] -- parameter list for controller
-        (foldr1 (\a b -> applyF (dbconn ">+") [a,b])
-                  ([applyF (erdname, "update"++entityName)
-                           [cvar (lowerFirst entityName)]] ++ 
-                   (map  (\name -> 
-                            applyF (dbconn ">+=") [
-                              applyF (controllerModuleName entityName,"get"++entityName++name++"s") [cvar (lowerFirst entityName)],
-                              CLambda [CPVar(0, "old"++(linkTableName entityName name allEntities)++name++"s")] (applyF (controllerModuleName entityName, "remove"++(linkTableName entityName name allEntities)) [cvar ("old"++(linkTableName entityName name allEntities)++name++"s"), cvar (lowerFirst entityName)])
-                            ]
-                          )
-                         manyToManyEntities
-                        ) ++
-                        (map (\name -> applyF (controllerModuleName entityName, "add"++(linkTableName entityName name allEntities)) [cvar ((lowerFirst name)++"s"++(linkTableName entityName name allEntities)), cvar (lowerFirst entityName)]) manyToManyEntities)
-                      )
-          )]
+    (tupleType ([baseType (erdname, entityName)] ++
+                 map (\name -> listType (ctvar name)) manyToManyEntities)
+      ~> applyTC (dbconn "DBAction") [baseType (pre "()")])
+    [simpleRule 
+      [tuplePattern
+             ([CPVar (0, lowerFirst entityName)] ++
+              (map (\ (param, varId) -> CPVar (varId, param)) 
+                   (zip (map (\e -> lowerFirst e ++ "s" ++
+                                    linkTableName entityName e allEntities)
+                             manyToManyEntities)
+                        [1..])))
+      ] -- parameter list for controller
+      (foldr1 (\a b -> applyF (dbconn ">+") [a,b])
+                ([applyF (erdname, "update"++entityName)
+                         [cvar (lowerFirst entityName)]] ++ 
+                 (map  (\name -> 
+                          applyF (dbconn ">+=") [
+                            applyF (controllerModuleName entityName,"get"++entityName++name++"s") [cvar (lowerFirst entityName)],
+                            CLambda [CPVar(0, "old"++(linkTableName entityName name allEntities)++name++"s")] (applyF (controllerModuleName entityName, "remove"++(linkTableName entityName name allEntities)) [cvar ("old"++(linkTableName entityName name allEntities)++name++"s"), cvar (lowerFirst entityName)])
+                          ]
+                        )
+                       manyToManyEntities
+                      ) ++
+                      (map (\name -> applyF (controllerModuleName entityName, "add"++(linkTableName entityName name allEntities)) [cvar ((lowerFirst name)++"s"++(linkTableName entityName name allEntities)), cvar (lowerFirst entityName)]) manyToManyEntities)
+                    )
+        )]
+ where
+  manyToManyEntities = manyToMany allEntities (Entity entityName attrList)
+  -- manyToOneEntities = manyToOne (Entity entityName attrList) relationships
+  -- noPKeys = (filter notPKey attrList)
 
+------------------------------------------------------------------------------
 --- Generates controller to delete an entity after confirmation.
 deleteController :: ControllerGenerator
 deleteController erdname (Entity entityName _) _ _ =
@@ -462,36 +645,38 @@ deleteTransaction erdname (Entity entityName attrList) _ allEntities =
                         ]
                  )
                  manyToManyEntities ++
-            [applyF (erdname, "delete"++entityName) [CVar entvar]]))]
+            [applyF (erdname, "delete" ++ entityName) [CVar entvar]]))]
 
+------------------------------------------------------------------------------
 listController :: ControllerGenerator
 listController erdname (Entity entityName _) _ _ =
-  let infovar = (0, "sinfo")
-      entsvar = (1, (lowerFirst entityName)++"s")
-   in
-    controllerFunction
-      ("Lists all "++entityName++" entities with buttons to show, delete,\n"++
-       "or edit an entity.")
-      entityName "list" 0
-      controllerType
-      [simpleRule [] -- no arguments
-        (applyF (pre "$")
-            [applyF checkAuthorizationFunc
-              [applyF (enauthModName,lowerFirst entityName++"OperationAllowed")
-                [applyF (authorizationModule,"ListEntities") []]],
-             CLambda [CPVar infovar] $
-              CDoExpr (            
-              [CSPat (CPVar entsvar)
-                     (applyF (erdname,"runQ")
-                             [constF (erdname,"queryAll"++entityName++"s")]),
-               CSExpr (applyF (pre "return")
-                             [applyF (viewFunctionName entityName "list")
-                                     [CVar infovar, CVar entsvar]])
-              ]
-            )
-           ]
-          )]
+  controllerFunction
+    ("Lists all "++entityName++" entities with buttons to show, delete,\n"++
+     "or edit an entity.")
+    entityName "list" 0
+    controllerType
+    [simpleRule [] -- no arguments
+      (applyF (pre "$")
+          [applyF checkAuthorizationFunc
+            [applyF (enauthModName,lowerFirst entityName++"OperationAllowed")
+              [applyF (authorizationModule,"ListEntities") []]],
+           CLambda [CPVar infovar] $
+            CDoExpr (            
+            [CSPat (CPVar entsvar)
+                   (applyF (erdname,"runQ")
+                           [constF (erdname,"queryAll"++entityName++"s")]),
+             CSExpr (applyF (pre "return")
+                           [applyF (viewFunctionName entityName "list")
+                                   [CVar infovar, CVar entsvar]])
+            ]
+          )
+         ]
+        )]
+ where
+  infovar = (0, "sinfo")
+  entsvar = (1, (lowerFirst entityName)++"s")
 
+------------------------------------------------------------------------------
 showController :: ControllerGenerator
 showController erdname (Entity entityName attrList) relationships allEntities =
   let manyToManyEntities = manyToMany allEntities (Entity entityName attrList)

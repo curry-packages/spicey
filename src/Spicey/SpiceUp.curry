@@ -2,7 +2,7 @@
 
 module Spicey.SpiceUp where
 
-import Database.ERD         ( ERD, readERDTermFile )
+import Database.ERD         ( ERD(..), Entity(..), readERDTermFile )
 import Database.ERD.Goodies ( erdName, storeERDFromProgram )
 import Directory
 import Distribution         ( installDir )
@@ -16,7 +16,7 @@ import Spicey.Scaffolding
 systemBanner :: String
 systemBanner =
   let bannerText = "Spicey Web Framework (Version " ++ packageVersion ++
-                   " of 20/10/19)"
+                   " of 21/10/19)"
       bannerLine = take (length bannerText) (repeat '-')
    in bannerLine ++ "\n" ++ bannerText ++ "\n" ++ bannerLine
 
@@ -31,8 +31,9 @@ setFileMode fmode filename =
 data DirTree =
    Directory String [DirTree] -- a directory to be created
  | ResourceFile FileMode String   -- a file to be copied from resource directory
- | ResourcePatchFile FileMode String (String->String) -- file to be copied from
-      -- resource directory where its contents is patched by the given function
+ | ResourcePatchFile FileMode String (ERD -> String -> String)
+    -- file to be copied from resource directory
+    -- where its contents is patched by the given function
  | GeneratedFromERD (String -> ERD -> String -> String -> IO ())
    -- takes an operation to generate code from ERD specification
 
@@ -41,14 +42,12 @@ spiceyStructure pkgname =
   Directory "." [
     ResourceFile NoExec "README.txt",
     ResourcePatchFile NoExec "package.json" (replacePackageName pkgname),
-    ResourcePatchFile NoExec "Makefile" replaceCurryBin,
+    ResourcePatchFile NoExec "Makefile" patchMakeFile,
     Directory "src" [
       ResourceFile NoExec "Main.curry",
       Directory "System" [
         ResourceFile NoExec "Spicey.curry",
         ResourceFile NoExec "Routes.curry",
-        ResourceFile NoExec "Crypto.curry",
-        ResourceFile NoExec "Session.curry",
         ResourceFile NoExec "SessionInfo.curry",
         ResourceFile NoExec "Authorization.curry",
         ResourceFile NoExec "Authentication.curry",
@@ -64,7 +63,7 @@ spiceyStructure pkgname =
       Directory "Model" [
         GeneratedFromERD createModels ],
       Directory "Config" [
-        ResourceFile NoExec $ "Config" </> "Spicey.curry",
+        ResourceFile NoExec $ "Config" </> "Storage.curry",
         ResourceFile NoExec $ "Config" </> "UserProcesses.curry",
         GeneratedFromERD createRoutes ]
     ],
@@ -99,21 +98,27 @@ spiceyStructure pkgname =
     ]
   ]
 
--- Replace every occurrence of "XXXCURRYBINXXX" by installDir++"/bin"
-replaceCurryBin :: String -> String
-replaceCurryBin [] = []
-replaceCurryBin (c:cs)
-  | c=='X' && take 13 cs == "XXCURRYBINXXX"
-    = installDir ++ "/bin" ++ replaceCurryBin (drop 13 cs)
-  | otherwise = c : replaceCurryBin cs
+-- Replace every occurrence of `XXXCURRYHOMEXXX` by `installDir` and
+-- every occurrince of `XXXICONTROLLERXXX` by
+-- `-i <controllermod1> ... -i <controllermodn>`.
+patchMakeFile :: ERD -> String -> String
+patchMakeFile _ [] = []
+patchMakeFile erd@(ERD _ entities _) (c:cs)
+  | c=='X' && take 14 cs == "XXCURRYHOMEXXX"
+  = installDir ++ patchMakeFile erd (drop 14 cs)
+  | c=='X' && take 16 cs == "XXICONTROLLERXXX"
+  = unwords (map (\ (Entity ename _) -> "-i Controller." ++ ename) entities) ++
+    patchMakeFile erd (drop 16 cs)
+  | otherwise
+  = c : patchMakeFile erd cs
 
 -- Replace every occurrence of "XXXPKGNAMEXXX" by first argument
-replacePackageName :: String -> String -> String
-replacePackageName _ [] = []
-replacePackageName pn (c:cs)
+replacePackageName :: String -> ERD -> String -> String
+replacePackageName _ _ [] = []
+replacePackageName pn erd (c:cs)
   | c=='X' && take 12 cs == "XXPKGNAMEXXX"
-    = pn ++ replacePackageName pn (drop 12 cs)
-  | otherwise = c : replacePackageName pn cs
+    = pn ++ replacePackageName pn erd (drop 12 cs)
+  | otherwise = c : replacePackageName pn erd cs
 
 -- checks if given path exists (file or directory) and executes
 -- given action if not
@@ -137,14 +142,14 @@ createStructure target_path resource_dir _ _ _
     system $ "cp \"" ++ infile ++ "\" \"" ++ targetfile ++ "\""
     setFileMode fmode targetfile
 
-createStructure target_path resource_dir _ _ _
+createStructure target_path resource_dir erd _ _
                 (ResourcePatchFile fmode filename f) = do
   let full_path = target_path </> filename
   ifNotExistsDo full_path $ do
     putStrLn ("Creating file '" ++ full_path ++ "'...")
     cnt <- readFile (resource_dir </> filename)
     let outfile = target_path </> filename
-    writeFile outfile (f cnt)
+    writeFile outfile (f erd cnt)
     setFileMode fmode outfile
 
 createStructure target_path resource_dir erd termfile db_path

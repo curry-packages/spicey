@@ -28,10 +28,6 @@ dbconn f = ("Database.CDBI.Connection", f)
 html :: String -> QName
 html f = ("HTML.Base", f)
 
---- Converts a string into a qualified name of the module "WUI".
-wui :: String -> QName
-wui f = ("WUI", f)
-
 -- Some module names:
 spiceyModule :: String
 spiceyModule = "System.Spicey"
@@ -43,8 +39,32 @@ authenticationModule = "System.Authentication"
 authorizationModule :: String
 authorizationModule = "System.Authorization"
 
+--- Converts a name into a qualified name of the module "Global".
+globalModule :: String -> QName
+globalModule n = ("Global", n)
+
+--- Converts a name into a qualified name of the module "HTML.Base".
+htmlModule :: String -> QName
+htmlModule n = ("HTML.Base", n)
+
+--- Converts a name into a qualified name of the module "HTML.Session".
+sessionModule :: String -> QName
+sessionModule n = ("HTML.Session", n)
+
+--- Converts a name into a qualified name of the module "Config.Storage".
+storageModule :: String -> QName
+storageModule n = ("Config.Storage", n)
+
+--- Converts a name into a qualified name of the module "HTML.WUI".
+wuiModule :: String -> QName
+wuiModule n = ("HTML.WUI", n)
+
 sessionInfoModule :: String
 sessionInfoModule = "System.SessionInfo"
+
+-- Type "UserSessionInfo"
+userSessionInfoType :: CTypeExpr
+userSessionInfoType = baseType (sessionInfoModule,"UserSessionInfo")
 
 dataModuleName :: String
 dataModuleName = "Config.RoutesData"
@@ -152,6 +172,16 @@ newEntityTypeName :: String -> QName
 newEntityTypeName entityName =
   (controllerModuleName entityName, "New" ++ entityName)
   
+--- The name of the controller form for a given entity and form type.
+controllerFormName :: String -> String -> QName
+controllerFormName entityName formtype =
+  (controllerModuleName entityName, formtype ++ entityName ++ "Form")
+
+--- The name of the controller store for a given entity and store type.
+controllerStoreName :: String -> String -> QName
+controllerStoreName entityName storetype =
+  (controllerModuleName entityName, storetype ++ entityName ++ "Store")
+
 --- The name of the controller function for a given entity and controller
 --- functionality.
 controllerFunctionName :: String -> String -> QName
@@ -272,9 +302,9 @@ combinator n
  | n==1
  = error "GenerationHelper.combinator: no combinator for list of length 1"
  | n>14      = error "GenerationHelper.combinator: attribute list too long"
- | n==2      = (wui "wPair")
- | n==3      = (wui "wTriple")
- | otherwise = (wui $ "w" ++ show n ++ "Tuple")
+ | n==2      = (wuiModule "wPair")
+ | n==3      = (wuiModule "wTriple")
+ | otherwise = (wuiModule $ "w" ++ show n ++ "Tuple")
 
 -- Associate to each attribute of the argument list a WUI specification
 -- as an abstract Curry program
@@ -286,17 +316,17 @@ attrWidgets [] = []
 widgetFor :: Domain -> Bool -> CExpr
 widgetFor domain null =
   case domain of
-    IntDom _    -> addMaybe (constF (wui "wInt"))
-    FloatDom _  -> addMaybe (constF (wui "wFloat"))
-    CharDom _   -> addMaybe (constF (wui "wString"))
+    IntDom _    -> addMaybe (constF (wuiModule "wInt"))
+    FloatDom _  -> addMaybe (constF (wuiModule "wFloat"))
+    CharDom _   -> addMaybe (constF (wuiModule "wString"))
     StringDom _ -> if null then constF (spiceyModule,"wString")
-                           else constF (wui "wRequiredString")
-                   --constF (wui (if null then "wString" else "wRequiredString"))
-    BoolDom _   -> addMaybe (constF (wui "wBoolean"))
+                           else constF (wuiModule "wRequiredString")
+         --constF (wuiModule (if null then "wString" else "wRequiredString"))
+    BoolDom _   -> addMaybe (constF (wuiModule "wBoolean"))
     DateDom _   -> addMaybe (constF (spiceyModule, "wDateType"))
-    UserDefined _ _ -> addMaybe (applyF (wui "wCheckBool")
+    UserDefined _ _ -> addMaybe (applyF (wuiModule "wCheckBool")
                                         [applyF (html "htxt") [string2ac ""]])
-    KeyDom _    -> addMaybe (constF (wui "wInt"))
+    KeyDom _    -> addMaybe (constF (wuiModule "wInt"))
     _ -> error "widgetFor: unknown domain for attribute"
  where
   -- adds a Maybe WUI if null values are allowed
@@ -309,3 +339,7 @@ widgetFor domain null =
                          (map (CLit . CIntc) [2018,1,1,0,0,0,0])])
                domain, e]
      else e
+
+
+showQName :: QName -> String
+showQName (mn,fn) = mn ++ "." ++ fn

@@ -14,12 +14,10 @@ module System.SessionInfo (
   getUserSessionInfo, updateUserSessionInfo
  ) where
 
-import FilePath ( (</>) )
-
 import Global
+import HTML.Session
 
-import Config.Spicey ( spiceyDataDir )
-import System.Session
+import Config.Storage
 
 --------------------------------------------------------------------------
 --- The data associated to a user session.
@@ -44,17 +42,15 @@ setUserLoginOfSession login (SD _) = SD login
 --- Definition of the session state to store the login name (as a string).
 userSessionInfo :: Global (SessionStore UserSessionInfo)
 userSessionInfo =
-  global emptySessionStore (Persistent (spiceyDataDir </> "userSessionInfo"))
+  global emptySessionStore (Persistent (inDataDir "userSessionInfo"))
 
 --- Gets the data of the current user session.
 getUserSessionInfo :: IO UserSessionInfo
 getUserSessionInfo =
-  getSessionData userSessionInfo >>= return . maybe emptySessionInfo id
+  getSessionData userSessionInfo emptySessionInfo
 
 --- Updates the data of the current user session.
 updateUserSessionInfo :: (UserSessionInfo -> UserSessionInfo) -> IO ()
-updateUserSessionInfo upd = do
-  sd <- getUserSessionInfo
-  putSessionData (upd sd) userSessionInfo
+updateUserSessionInfo = updateSessionData userSessionInfo emptySessionInfo
 
 --------------------------------------------------------------------------
