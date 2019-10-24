@@ -33,14 +33,14 @@ generateControllersForEntity erdname allEntities
    [ "Global", "Maybe", "Time"
    , "HTML.Base", "HTML.Session", "HTML.WUI"
    , erdname
-   , "Config.Storage" , "Config.UserProcesses"
+   , "Config.EntityRoutes", "Config.Storage" , "Config.UserProcesses"
    , sessionInfoModule, authorizationModule, enauthModName, spiceyModule
    , entitiesToHtmlModule erdname
    , viewModuleName ename
    ]
    Nothing -- defaultdecl
    [] -- classdecls
-   [controllerInstDecl erdname entity] -- instdecls
+   [] -- instdecls
    [newEntityType erdname entity relationships allEntities] -- typedecls
    -- functions
    (
@@ -81,25 +81,6 @@ generateControllersForEntity erdname allEntities
    )
    [] -- opdecls
 
-
--- Generates the instance declaration for a controller.
-controllerInstDecl :: String -> Entity -> CInstanceDecl
-controllerInstDecl erdname (Entity entityName _) =
-  CInstance (spiceyModule,"EntityController")
-            (CContext [])
-            (baseType (erdname, entityName))
-    [cfunc (spiceyModule,"controllerOnKey") 1 Private
-      (CQualType (CContext [((spiceyModule,"EntityController"),tvara)])
-         (stringType ~> (tvara ~> controllerType) ~> controllerType))
-        [simpleRule [CPVar (2,"s")]
-                    (applyF (spiceyModule,"applyControllerOn")
-                            [readKey, getEntityOp])]]
- where
-  tvara       = CTVar (0,"a")
-  readKey     = applyF (erdname, "read" ++ entityName ++ "Key") [CVar (2,"s")]
-  getEntityOp = applyF (pre ".")
-                       [constF (erdname, "runJustT"),
-                        constF (erdname, "get" ++ entityName)]
 
 -- erdname: name of the entity-relationship-specification
 -- entity: the entity to generate a controller for
@@ -228,6 +209,7 @@ newForm erdname entity@(Entity entityName attrlist) relationships allEntities =
   manyToManyEntities = manyToMany allEntities (Entity entityName attrlist)
   manyToOneEntities  = manyToOne (Entity entityName attrlist) relationships
   arity1 = 1 + length manyToOneEntities + length manyToManyEntities
+  listEntityURL = '?' : entityName ++ "/list"
 
   wuiFun =
     CLambda
@@ -252,7 +234,8 @@ newForm erdname entity@(Entity entityName attrlist) relationships allEntities =
                   [applyF (transFunctionName entityName "create")
                            [CVar entvar]],
                 applyF (spiceyModule,"nextInProcessOr")
-                  [callEntityListController entityName,
+                  [applyF (spiceyModule,"redirectController")
+                          [string2ac listEntityURL],
                    constF (pre "Nothing")]])])
 
   renderFun =
@@ -262,7 +245,7 @@ newForm erdname entity@(Entity entityName attrlist) relationships allEntities =
         [CVar sinfovar,
          string2ac $ "Create new " ++ entityName,
          string2ac "Create",
-         constF (controllerFunctionName entityName "list"),
+         string2ac listEntityURL,
          constF (pre "()")
         ]
    where sinfovar = (1, "sinfo")
@@ -441,6 +424,7 @@ editForm erdname entity@(Entity entityName attrlist) relationships allEntities =
   manyToManyEntities = manyToMany allEntities (Entity entityName attrlist)
   manyToOneEntities  = manyToOne (Entity entityName attrlist) relationships
   arity1 = 2 + length manyToOneEntities * 2 + length manyToManyEntities
+  listEntityURL = '?' : entityName ++ "/list"
 
   wuiFun =
     CLambda
@@ -476,7 +460,8 @@ editForm erdname entity@(Entity entityName attrlist) relationships allEntities =
                   [applyF (transFunctionName entityName "update")
                            [CVar entvar]],
                 applyF (spiceyModule,"nextInProcessOr")
-                  [callEntityListController entityName,
+                  [applyF (spiceyModule,"redirectController")
+                          [string2ac listEntityURL],
                    constF (pre "Nothing")]])])
 
   renderFun =
@@ -486,7 +471,7 @@ editForm erdname entity@(Entity entityName attrlist) relationships allEntities =
         [CVar sinfovar,
          string2ac $ "Edit " ++ entityName,
          string2ac "Change",
-         constF (controllerFunctionName entityName "list"),
+         string2ac listEntityURL,
          constF (pre "()")
         ]
    where sinfovar = (1, "sinfo")
@@ -598,6 +583,7 @@ destroyController :: ControllerGenerator
 destroyController erdname (Entity entityName _) _ _ =
   let entlc  = lowerFirst entityName  -- entity name in lowercase
       entvar = (0, entlc)             -- entity parameter for controller
+      listEntityURL = '?' : entityName ++ "/list"
   in
   controllerFunction
   ("Deletes a given " ++ entityName ++ " entity\n" ++
@@ -614,7 +600,8 @@ destroyController erdname (Entity entityName _) _ _ =
             [applyF (erdname,"runT")
                     [applyF (transFunctionName entityName "delete")
                             [CVar entvar]],
-             constF (controllerFunctionName entityName "list")]])]
+             applyF (spiceyModule,"redirectController")
+                    [string2ac listEntityURL]]])]
 
 --- Generates a transaction to delete an entity.
 deleteTransaction :: ControllerGenerator
@@ -740,12 +727,6 @@ showController erdname (Entity entityName attrList) relationships allEntities =
             ]
           )
       ]
-
--- Code to call the list controller of an entity where the current
--- URL parameters are passed to this list controller.
-callEntityListController :: String -> CExpr
-callEntityListController entityName =
-  constF (controllerFunctionName entityName "list")
 
 manyToManyAddOrRemove :: String -> Entity -> [String] -> [Entity] -> [CFuncDecl]
 manyToManyAddOrRemove erdname (Entity entityName _) entities allEntities =
@@ -937,25 +918,6 @@ relationshipsForEntityName :: String -> [Relationship] -> [Relationship]
 relationshipsForEntityName ename rels = filter endsIn rels
  where
   endsIn (Relationship _ ends) = any (\ (REnd n _ _) -> ename == n) ends
-
-------------------------------------------------------------------------
--- Generate the module defining the default controller.
-generateDefaultController :: String -> [Entity] -> CurryProg
-generateDefaultController _ (Entity ename _:_) = simpleCurryProg
-  defCtrlModName
-  [controllerModuleName ename, spiceyModule] -- imports
-  [] -- typedecls
-  -- functions
-  [stCmtFunc
-    "The default controller of the application."
-    (defCtrlModName,"defaultController")
-    1
-    Public
-    controllerType
-    [simpleRule []
-       (constF (controllerModuleName ename, "main"++ename++"Controller"))]
-  ]
-  [] -- opdecls
 
 ------------------------------------------------------------------------
 -- Auxiliaries:

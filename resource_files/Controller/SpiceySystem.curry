@@ -22,7 +22,6 @@ import HTML.Session
 import System.Processes
 import System.Authentication
 import View.SpiceySystem
-import Controller.DefaultController
 
 -----------------------------------------------------------------------------
 --- Controller for login/logout.
@@ -33,10 +32,8 @@ loginController = do
   return [formExp loginFormDef]
 
 loginFormDef :: HtmlFormDef (Maybe String)
-loginFormDef =
-  formDefWithID "Controller.SpiceySystem.loginFormDef"
-    (getSessionData loginViewData Nothing)
-    (loginView  defaultController)
+loginFormDef = formDefWithID "Controller.SpiceySystem.loginFormDef"
+  (getSessionData loginViewData Nothing) loginView
 
 --- The data processed by the login form.
 loginViewData :: Global (SessionStore (Maybe String))

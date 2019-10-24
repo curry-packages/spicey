@@ -16,7 +16,7 @@ import Spicey.Scaffolding
 systemBanner :: String
 systemBanner =
   let bannerText = "Spicey Web Framework (Version " ++ packageVersion ++
-                   " of 21/10/19)"
+                   " of 24/10/19)"
       bannerLine = take (length bannerText) (repeat '-')
    in bannerLine ++ "\n" ++ bannerText ++ "\n" ++ bannerLine
 
@@ -46,12 +46,12 @@ spiceyStructure pkgname =
     Directory "src" [
       ResourceFile NoExec "Main.curry",
       Directory "System" [
-        ResourceFile NoExec "Spicey.curry",
-        ResourceFile NoExec "Routes.curry",
-        ResourceFile NoExec "SessionInfo.curry",
-        ResourceFile NoExec "Authorization.curry",
-        ResourceFile NoExec "Authentication.curry",
-        ResourceFile NoExec "Processes.curry",
+        ResourceFile NoExec $ "System" </> "Spicey.curry",
+        ResourceFile NoExec $ "System" </> "Routes.curry",
+        ResourceFile NoExec $ "System" </> "SessionInfo.curry",
+        ResourceFile NoExec $ "System" </> "Authorization.curry",
+        ResourceFile NoExec $ "System" </> "Authentication.curry",
+        ResourceFile NoExec $ "System" </> "Processes.curry",
         GeneratedFromERD createAuthorizations ],
       Directory "View" [
         ResourceFile NoExec $ "View" </> "SpiceySystem.curry",
@@ -65,35 +65,36 @@ spiceyStructure pkgname =
       Directory "Config" [
         ResourceFile NoExec $ "Config" </> "Storage.curry",
         ResourceFile NoExec $ "Config" </> "UserProcesses.curry",
-        GeneratedFromERD createRoutes ]
+        GeneratedFromERD createRoutes,
+        GeneratedFromERD createEntityRoutes ]
     ],
     Directory "data" [
       ResourceFile NoExec $ "data" </> "htaccess"
     ],
     Directory "public" [
-      ResourceFile NoExec "index.html",
-      ResourceFile NoExec "favicon.ico",
+      ResourceFile NoExec $ "public" </> "index.html",
+      ResourceFile NoExec $ "public" </> "favicon.ico",
       Directory "css" [
-        ResourceFile NoExec "bootstrap.min.css",
-        ResourceFile NoExec "spicey.css"
+        ResourceFile NoExec $ "css" </> "bootstrap.min.css",
+        ResourceFile NoExec $ "css" </> "spicey.css"
       ],
       Directory "js" [
-        ResourceFile NoExec "bootstrap.min.js",
-        ResourceFile NoExec "jquery.min.js"
+        ResourceFile NoExec $ "js" </> "bootstrap.min.js",
+        ResourceFile NoExec $ "js" </> "jquery.min.js"
       ],
       Directory "fonts" [
-        ResourceFile NoExec "glyphicons-halflings-regular.eot",
-        ResourceFile NoExec "glyphicons-halflings-regular.svg",
-        ResourceFile NoExec "glyphicons-halflings-regular.ttf",
-        ResourceFile NoExec "glyphicons-halflings-regular.woff",
-        ResourceFile NoExec "glyphicons-halflings-regular.woff2"
+        ResourceFile NoExec $ "fonts" </> "glyphicons-halflings-regular.eot",
+        ResourceFile NoExec $ "fonts" </> "glyphicons-halflings-regular.svg",
+        ResourceFile NoExec $ "fonts" </> "glyphicons-halflings-regular.ttf",
+        ResourceFile NoExec $ "fonts" </> "glyphicons-halflings-regular.woff",
+        ResourceFile NoExec $ "fonts" </> "glyphicons-halflings-regular.woff2"
       ],
       Directory "images" [
-        ResourceFile NoExec "spicey-logo.png",
-        ResourceFile NoExec "text.png",
-        ResourceFile NoExec "time.png",
-        ResourceFile NoExec "number.png",
-        ResourceFile NoExec "foreign.png"
+        ResourceFile NoExec $ "images" </> "spicey-logo.png",
+        ResourceFile NoExec $ "images" </> "text.png",
+        ResourceFile NoExec $ "images" </> "time.png",
+        ResourceFile NoExec $ "images" </> "number.png",
+        ResourceFile NoExec $ "images" </> "foreign.png"
       ]
     ]
   ]
@@ -143,13 +144,13 @@ createStructure target_path resource_dir _ _ _
     setFileMode fmode targetfile
 
 createStructure target_path resource_dir erd _ _
-                (ResourcePatchFile fmode filename f) = do
+                (ResourcePatchFile fmode filename patchfun) = do
   let full_path = target_path </> filename
   ifNotExistsDo full_path $ do
     putStrLn ("Creating file '" ++ full_path ++ "'...")
     cnt <- readFile (resource_dir </> filename)
     let outfile = target_path </> filename
-    writeFile outfile (f erd cnt)
+    writeFile outfile (patchfun erd cnt)
     setFileMode fmode outfile
 
 createStructure target_path resource_dir erd termfile db_path

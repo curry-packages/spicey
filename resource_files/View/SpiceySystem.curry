@@ -10,7 +10,7 @@ module View.SpiceySystem
  where
 
 import HTML.Base
-import HTML.Styles.Bootstrap3 (defaultButton, primButton)
+import HTML.Styles.Bootstrap3 (defaultButton, hrefButton, primButton)
 
 import Config.UserProcesses
 import System.Processes
@@ -21,15 +21,15 @@ import System.Authentication
 --- Generates a form for login/logout.
 --- If the passed login name is the empty string,
 --- we offer a login dialog, otherwise a logout dialog.
-loginView :: Controller -> Maybe String -> [HtmlExp]
-loginView controller currlogin =
+loginView :: Maybe String -> [HtmlExp]
+loginView currlogin =
   case currlogin of
    Nothing -> [h3 [htxt "Login as:"],
                textField loginfield "",
                defaultButton "Login" loginHandler]
    Just _  -> [h3 [htxt "Really logout?"],
-               primButton "Logout" (logoutHandler True),
-               defaultButton "Cancel" (logoutHandler False)]
+               primButton "Logout" logoutHandler,
+               hrefButton "?" [htxt "Cancel"]]
  where
   loginfield free
 
@@ -40,12 +40,11 @@ loginView controller currlogin =
       then done
       else do loginToSession loginname
               setPageMessage ("Logged in as: "++loginname)
-    nextInProcessOr controller Nothing >>= getPage
+    nextInProcessOr (redirectController "?") Nothing >>= getPage
 
-  logoutHandler confirm _ = do
-    if confirm then logoutFromSession >> setPageMessage "Logged out"
-               else done
-    nextInProcessOr controller Nothing >>= getPage
+  logoutHandler _ = do
+    logoutFromSession >> setPageMessage "Logged out"
+    nextInProcessOr (redirectController "?") Nothing >>= getPage
 
 -----------------------------------------------------------------------------
 --- A view for all processes contained in a given process specification.

@@ -15,9 +15,10 @@ module System.SessionInfo (
  ) where
 
 import Global
+
 import HTML.Session
 
-import Config.Storage
+import Config.Storage ( inDataDir )
 
 --------------------------------------------------------------------------
 --- The data associated to a user session.

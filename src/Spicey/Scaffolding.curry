@@ -18,6 +18,7 @@ import Database.ERD.Goodies
 
 import Spicey.ControllerGeneration
 import Spicey.EntitiesToHtmlGeneration
+import Spicey.EntityRoutesGeneration
 import Spicey.GenerationHelper
 import Spicey.RouteGeneration
 import Spicey.Transformation
@@ -40,8 +41,8 @@ getEntities (ERD _ entities _) = entities
 
 createViews :: String -> ERD -> String -> String -> IO ()
 createViews _ (ERD name entities relationship) path _ =
-  mapIO_ (saveView name (getEntities erdt) (getRelationships erdt))
-         (filter (not . Spicey.GenerationHelper.isGenerated) (getEntities erdt))
+  mapM_ (saveView name (getEntities erdt) (getRelationships erdt))
+        (filter (not . Spicey.GenerationHelper.isGenerated) (getEntities erdt))
  where
   erdt = transform (ERD name entities relationship)
 
@@ -52,13 +53,18 @@ createViews _ (ERD name entities relationship) path _ =
               (showCProg (generateViewsForEntity erdname allEntities
                             (Entity ename attrlist) relationships))
 
+createEntityRoutes :: String -> ERD -> String -> String -> IO ()
+createEntityRoutes _ (ERD name entities _) path _ = do
+  putStrLn "Generating enitity routes 'Config.EntityRoutes.curry'..."
+  writeFile (path </> "EntityRoutes.curry")
+            (showCProg (generateRoutesForEntity name entities))
+
+
 createControllers :: String -> ERD -> String -> String -> IO ()
 createControllers _ (ERD name entities relationship) path _ = do
-  mapIO_ (saveController name (getEntities erdt) (getRelationships erdt))
-         (filter (not . Spicey.GenerationHelper.isGenerated) (getEntities erdt))
+  mapM_ (saveController name (getEntities erdt) (getRelationships erdt))
+        (filter (not . Spicey.GenerationHelper.isGenerated) (getEntities erdt))
   putStrLn "Generating default controller authorization 'AuthorizedControllers.curry'..."
-  writeFile (path </> "DefaultController.curry")
-            (showCProg (generateDefaultController name entities))
  where
   erdt = transform (ERD name entities relationship)
 
@@ -83,21 +89,20 @@ createHtmlHelpers _ (ERD name entities relationship) path _ =
 
   saveToHtml :: String -> [Entity] -> [Relationship] -> IO ()
   saveToHtml erdname allEntities relationships = do
-    putStrLn $ "Saving 'View."++entitiesToHtmlModule erdname++".curry'..."
-    fileh <- openFile (path </> erdname++"EntitiesToHtml.curry") WriteMode
+    putStrLn $ "Saving 'View." ++ entitiesToHtmlModule erdname ++ ".curry'..."
+    fileh <- openFile (path </> "EntitiesToHtml.curry") WriteMode
     hPutStr fileh (showCProg (generateToHtml erdname allEntities relationships))
     hClose fileh
 
--- Uses Curry's `ertools` for ERD to Curry transformation
+-- Uses Curry package `ertools` for ERD to Curry transformation
 createModels :: String -> ERD -> String -> String -> IO ()
-createModels term_path erd path db_path = do
+createModels termpath erd path dbpath = do
   let erdname = erdName erd
-      dbfile = if null db_path then erdname ++ ".db"
-                               else db_path
-  aterm_path <- getAbsolutePath term_path
+      dbfile = if null dbpath then erdname ++ ".db"
+                              else dbpath
   curdir <- getCurrentDirectory
   setCurrentDirectory path
-  erd2cdbiWithDBandERD dbfile term_path
+  erd2cdbiWithDBandERD dbfile termpath
   setCurrentDirectory curdir
 
 createRoutes :: String -> ERD -> String -> String -> IO ()

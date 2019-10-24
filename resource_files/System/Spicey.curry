@@ -4,7 +4,9 @@
 --------------------------------------------------------------------------
 
 module System.Spicey (
-  Controller, EntityController(..), applyControllerOn,
+  Controller, EntityController(..), showRoute, editRoute, deleteRoute,
+  applyControllerOn,
+  redirectController,
   nextController, nextControllerForData,
   confirmDeletionPage,
   transactionController,
@@ -54,10 +56,28 @@ type ViewBlock = [HtmlExp]
 --- Spicey.getControllerParams inside the controller.
 type Controller = IO ViewBlock
 
---- The type class `EntityController` provides the application
---- of a controller to some entity identified by a key string.
+
+--- The type class `EntityController` contains:
+--- * the application of a controller to some entity identified by a key string
+--- * an operation to construct a URL route for an entity w.r.t. to a route
+---   string
 class EntityController a where
   controllerOnKey :: String -> (a -> Controller) -> Controller
+
+  entityRoute :: String -> a -> String
+
+
+--- Returns the URL route to show a given entity.
+showRoute :: EntityController a => a -> String
+showRoute = entityRoute "show"
+
+--- Returns the URL route to edit a given entity.
+editRoute :: EntityController a => a -> String
+editRoute = entityRoute "edit"
+
+--- Returns the URL route to delete a given entity.
+deleteRoute :: EntityController a => a -> String
+deleteRoute = entityRoute "delete"
 
 
 --- Reads an entity for a given key and applies a controller to it.
@@ -66,6 +86,11 @@ applyControllerOn :: Maybe enkey -> (enkey -> IO en)
 applyControllerOn Nothing _ _ = displayUrlError
 applyControllerOn (Just userkey) getuser usercontroller =
   getuser userkey >>= usercontroller
+
+--- A controller to redirect to an URL starting with "?"
+--- (see implementation of `getPage`).
+redirectController :: String -> Controller
+redirectController url = return [HtmlText url]
 
 nextController :: Controller -> _ -> IO HtmlPage
 nextController controller _ = do
@@ -160,18 +185,18 @@ showControllerURL ctrlurl params = '?' : ctrlurl ++ concatMap ('/':) params
 --- @param sinfo      - the UserSessionInfo to select the language
 --- @param title      - the title of the WUI form
 --- @param buttontag  - the text on the submit button
---- @param cancelctrl - the controller called if submission is cancelled
+--- @param cancelurl  - the URL selected if submission is cancelled
 --- @param envpar     - environment parameters (e.g., user session data)
 --- @param hexp       - the HTML expression representing the WUI form
 --- @param handler    - the handler for submitting data
-renderWUI :: UserSessionInfo -> String -> String -> Controller
+renderWUI :: UserSessionInfo -> String -> String -> String
           -> a -> HtmlExp -> (CgiEnv -> Controller) -> [HtmlExp]
-renderWUI _ title buttontag cancelctrl _ hexp handler =
+renderWUI _ title buttontag cancelurl _ hexp handler =
   [h1 [htxt title],
    hexp,
    breakline,
    primButton buttontag (\env -> handler env >>= getPage),
-   defaultButton "Cancel" (nextController (cancelOperation >> cancelctrl))]
+   hrefButton cancelurl [htxt "Cancel"]]
 
 
 --- A WUI for manipulating CalendarTime entities.
@@ -243,15 +268,14 @@ spiceyFooter =
              [image "images/spicey-logo.png" "Spicey"]
           `addAttr` ("target","_blank"),
         htxt "Framework"]]
-        
+
 --- Transforms a view into an HTML form by adding the basic page layout.
+--- If the view is an empty text or a text starting with "?",
+--- generates a redirection page.
 getPage :: ViewBlock -> IO HtmlPage
 getPage viewblock = case viewblock of
-  [HtmlText ""] ->
-       return $ HtmlPage "forward to Spicey"
-                  [pageMetaInfo [("http-equiv","refresh"),
-                                 ("content","1; url=spicey.cgi")]]
-                  [par [htxt "You will be forwarded..."]]
+  [HtmlText ""]          -> return $ redirectPage "spicey.cgi"
+  [HtmlText ('?':route)] -> return $ redirectPage ('?':route)
   _ -> do
     routemenu  <- getRouteMenu
     msg        <- getPageMessage
@@ -361,7 +385,7 @@ spTable items = table items  `addClass` "table table-hover table-condensed"
 
 --- Definition of the session state to store the page message (a string).
 pageMessage :: Global (SessionStore String)
-pageMessage = global emptySessionStore Temporary
+pageMessage = global emptySessionStore (Persistent (inDataDir "pageMessage"))
 
 --- Gets the page message and delete it.
 getPageMessage :: IO String
@@ -380,7 +404,7 @@ setPageMessage msg = putSessionData pageMessage msg
 
 --- Definition of the session state to store the last URL (as a string).
 lastUrls :: Global (SessionStore [String])
-lastUrls = global emptySessionStore Temporary
+lastUrls = global emptySessionStore (Persistent (inDataDir "lastUrls"))
 
 --- Gets the list of URLs of the current session.
 getLastUrls :: IO [String]

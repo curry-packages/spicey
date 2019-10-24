@@ -19,7 +19,8 @@ generateViewsForEntity erdname allEntities
   [ "Sort", "Time"
   , "HTML.Base", bootstrapModule, "HTML.WUI"
   , erdname
-  , spiceyModule, sessionInfoModule
+  , "Config.EntityRoutes"
+  , sessionInfoModule, spiceyModule
   , entitiesToHtmlModule erdname] -- imports
   [] -- typedecls
   -- functions
@@ -306,86 +307,82 @@ showView erdname (Entity entityName attrlist) relationships allEntities =
 --- Create operation for the "list entities" view.
 listView :: ViewGenerator
 listView erdname (Entity entityName attrlist) _ _ =
- let infovar = (0, "sinfo")
-     entsvar = (1, (lowerFirst entityName)++"s")
-     envar   = (2, lowerFirst entityName)
-     showkey = applyF (erdname,"show"++entityName++"Key") [CVar envar]
-  in
-    viewFunction 
-      ("Supplies a list view for a given list of "++entityName++" entities.\n"++
-       "Shows also show/edit/delete buttons if the user is logged in.\n"++
-       "The arguments are the session info and the list of "++entityName++
-       " entities.\n")
-      entityName "list" 1
-      -- function type
-      (userSessionInfoType ~> listType (baseType (erdname,entityName))
-                           ~> viewBlockType)
-      [CRule
-        [CPVar infovar, CPVar entsvar]
-        (CSimpleRhs
-          (applyF (pre ":") [
-              applyF (html "h1")
-                     [list2ac [applyF (html "htxt")
-                                      [string2ac $ entityName ++ " list"]]],
-              list2ac [
-                applyF (spiceyModule, "spTable") [
-                  applyF (pre "++") [
-                    list2ac [
-                      applyF (pre "take") [
-                        CLit (CIntc (length attrlist)),
-                        constF (entitiesToHtmlModule erdname,
-                                lowerFirst entityName++"LabelList")
-                      ]
-                    ],
-                    applyF (pre "map") [
-                      constF (viewModuleName entityName,"list"++entityName),
-                      applyF ("Sort","mergeSortBy") [
-                          constF (viewModuleName entityName,"leq"++entityName),
-                          CVar entsvar
-                      ]
+  viewFunction 
+    ("Supplies a list view for a given list of "++entityName++" entities.\n"++
+     "Shows also show/edit/delete buttons if the user is logged in.\n"++
+     "The arguments are the session info and the list of "++entityName++
+     " entities.\n")
+    entityName "list" 1
+    -- function type
+    (userSessionInfoType ~> listType (baseType (erdname,entityName))
+                         ~> viewBlockType)
+    [CRule
+      [CPVar infovar, CPVar entsvar]
+      (CSimpleRhs
+        (applyF (pre ":") [
+            applyF (html "h1")
+                   [list2ac [applyF (html "htxt")
+                                    [string2ac $ entityName ++ " list"]]],
+            list2ac [
+              applyF (spiceyModule, "spTable") [
+                applyF (pre "++") [
+                  list2ac [
+                    applyF (pre "take") [
+                      CLit (CIntc (length attrlist)),
+                      constF (entitiesToHtmlModule erdname,
+                              lowerFirst entityName++"LabelList")
+                    ]
+                  ],
+                  applyF (pre "map") [
+                    constF (viewModuleName entityName,"list"++entityName),
+                    applyF ("Sort","mergeSortBy") [
+                        constF (viewModuleName entityName,"leq"++entityName),
+                        CVar entsvar
                     ]
                   ]
                 ]
               ]
             ]
-          )
-        [CLocalFunc (stFunc
-          (viewModuleName entityName, "list"++entityName) 2 Private
-          (ctvar entityName ~> listType viewBlockType)
-          [simpleRule [CPVar envar]
-             (applyF (pre "++") [
-                applyF (entitiesToHtmlModule erdname,
-                        lowerFirst entityName++"ToListView")
-                       [cvar $ lowerFirst entityName],
-                applyF (pre "if_then_else")
-                 [applyF (pre "==")
-                   [applyF (sessionInfoModule,"userLoginOfSession")
-                           [CVar infovar],
-                    constF (pre "Nothing")],
-                  list2ac [],
+          ]
+        )
+      [CLocalFunc (stFunc
+        (viewModuleName entityName, "list"++entityName) 2 Private
+        (ctvar entityName ~> listType viewBlockType)
+        [simpleRule [CPVar envar]
+           (applyF (pre "++") [
+              applyF (entitiesToHtmlModule erdname,
+                      lowerFirst entityName++"ToListView")
+                     [cvar $ lowerFirst entityName],
+              applyF (pre "if_then_else")
+               [applyF (pre "==")
+                 [applyF (sessionInfoModule,"userLoginOfSession")
+                         [CVar infovar],
+                  constF (pre "Nothing")],
+                list2ac [],
+                list2ac
+                 [list2ac
+                   [applyF hrefButtonName
+                     [applyF (spiceyModule,"showRoute") [CVar envar],
+                      list2ac [applyF (html "htxt") [string2ac "show"]]]],
                   list2ac
-                   [list2ac
-                     [applyF hrefButtonName
-                       [applyF (pre "++")
-                         [string2ac ("?"++entityName++"/show/"),showkey],
-                        list2ac [applyF (html "htxt") [string2ac "show"]]]],
-                    list2ac
-                     [applyF hrefButtonName
-                       [applyF (pre "++")
-                         [string2ac ("?"++entityName++"/edit/"),showkey],
-                        list2ac [applyF (html "htxt") [string2ac "edit"]]]],
-                    list2ac
-                     [applyF hrefButtonName
-                       [applyF (pre "++")
-                         [string2ac ("?"++entityName++"/delete/"),showkey],
-                        list2ac [applyF (html "htxt") [string2ac "delete"]]]]
-                ]]
-              ]
-              )])
-        ])
-      ]
-      
--- aux
+                   [applyF hrefButtonName
+                     [applyF (spiceyModule,"editRoute") [CVar envar],
+                      list2ac [applyF (html "htxt") [string2ac "edit"]]]],
+                  list2ac
+                   [applyF hrefButtonName
+                     [applyF (spiceyModule,"deleteRoute") [CVar envar],
+                      list2ac [applyF (html "htxt") [string2ac "delete"]]]]
+              ]]
+            ]
+            )])
+      ])
+    ]
+ where
+  infovar = (0, "sinfo")
+  entsvar = (1, (lowerFirst entityName)++"s")
+  envar   = (2, lowerFirst entityName)
+    
+-- Auxiliaries
 
 -- entityName: Name of entity the view should be generated for
 -- viewType: the function of the generated View, e.g. "new", "edit", "list"

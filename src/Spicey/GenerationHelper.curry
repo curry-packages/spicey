@@ -74,7 +74,7 @@ mappingModuleName = "Config.ControllerMapping"
 
 --- Name of EntitiesToHtml module.
 entitiesToHtmlModule :: String -> String
-entitiesToHtmlModule erdname = "View." ++ erdname ++ "EntitiesToHtml"
+entitiesToHtmlModule erdname = "View.EntitiesToHtml"
 
 bootstrapModule :: String
 bootstrapModule = "HTML.Styles.Bootstrap3"
