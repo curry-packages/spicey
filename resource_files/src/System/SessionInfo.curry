@@ -18,8 +18,6 @@ import Global
 
 import HTML.Session
 
-import Config.Storage ( inDataDir )
-
 --------------------------------------------------------------------------
 --- The data associated to a user session.
 --- It contains formation about the login status of a user.
@@ -43,7 +41,7 @@ setUserLoginOfSession login (SD _) = SD login
 --- Definition of the session state to store the login name (as a string).
 userSessionInfo :: Global (SessionStore UserSessionInfo)
 userSessionInfo =
-  global emptySessionStore (Persistent (inDataDir "userSessionInfo"))
+  global emptySessionStore (Persistent (inSessionDataDir "userSessionInfo"))
 
 --- Gets the data of the current user session.
 getUserSessionInfo :: IO UserSessionInfo

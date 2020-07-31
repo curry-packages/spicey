@@ -16,7 +16,7 @@ import Spicey.Scaffolding
 systemBanner :: String
 systemBanner =
   let bannerText = "Spicey Web Framework (Version " ++ packageVersion ++
-                   " of 24/10/19)"
+                   " of 31/07/20)"
       bannerLine = take (length bannerText) (repeat '-')
    in bannerLine ++ "\n" ++ bannerText ++ "\n" ++ bannerLine
 
@@ -44,27 +44,26 @@ spiceyStructure pkgname =
     ResourcePatchFile NoExec "package.json" (replacePackageName pkgname),
     ResourcePatchFile NoExec "Makefile" patchMakeFile,
     Directory "src" [
-      ResourceFile NoExec "Main.curry",
+      srcfile "Main.curry",
       Directory "System" [
-        ResourceFile NoExec $ "System" </> "Spicey.curry",
-        ResourceFile NoExec $ "System" </> "Routes.curry",
-        ResourceFile NoExec $ "System" </> "SessionInfo.curry",
-        ResourceFile NoExec $ "System" </> "Authorization.curry",
-        ResourceFile NoExec $ "System" </> "Authentication.curry",
-        ResourceFile NoExec $ "System" </> "Processes.curry",
+        srcfile $ "System" </> "Spicey.curry",
+        srcfile $ "System" </> "Routes.curry",
+        srcfile $ "System" </> "SessionInfo.curry",
+        srcfile $ "System" </> "Authorization.curry",
+        srcfile $ "System" </> "Authentication.curry",
+        srcfile $ "System" </> "Processes.curry",
         GeneratedFromERD createAuthorizations ],
       Directory "View" [
-        ResourceFile NoExec $ "View" </> "SpiceySystem.curry",
+        srcfile $ "View" </> "SpiceySystem.curry",
         GeneratedFromERD createViews,
         GeneratedFromERD createHtmlHelpers ],
       Directory "Controller" [
-        ResourceFile NoExec $ "Controller" </> "SpiceySystem.curry",
+        srcfile $ "Controller" </> "SpiceySystem.curry",
         GeneratedFromERD createControllers ],
       Directory "Model" [
         GeneratedFromERD createModels ],
       Directory "Config" [
-        ResourceFile NoExec $ "Config" </> "Storage.curry",
-        ResourceFile NoExec $ "Config" </> "UserProcesses.curry",
+        srcfile $ "Config" </> "UserProcesses.curry",
         GeneratedFromERD createRoutes,
         GeneratedFromERD createEntityRoutes ]
     ],
@@ -73,31 +72,29 @@ spiceyStructure pkgname =
     ],
     Directory "public" [
       ResourceFile NoExec $ "public" </> "index.html",
-      ResourceFile NoExec $ "public" </> "favicon.ico",
-      Directory "css" [
-        ResourceFile NoExec $ "css" </> "bootstrap.min.css",
-        ResourceFile NoExec $ "css" </> "spicey.css"
-      ],
-      Directory "js" [
-        ResourceFile NoExec $ "js" </> "bootstrap.min.js",
-        ResourceFile NoExec $ "js" </> "jquery.min.js"
-      ],
-      Directory "fonts" [
-        ResourceFile NoExec $ "fonts" </> "glyphicons-halflings-regular.eot",
-        ResourceFile NoExec $ "fonts" </> "glyphicons-halflings-regular.svg",
-        ResourceFile NoExec $ "fonts" </> "glyphicons-halflings-regular.ttf",
-        ResourceFile NoExec $ "fonts" </> "glyphicons-halflings-regular.woff",
-        ResourceFile NoExec $ "fonts" </> "glyphicons-halflings-regular.woff2"
-      ],
-      Directory "images" [
-        ResourceFile NoExec $ "images" </> "spicey-logo.png",
-        ResourceFile NoExec $ "images" </> "text.png",
-        ResourceFile NoExec $ "images" </> "time.png",
-        ResourceFile NoExec $ "images" </> "number.png",
-        ResourceFile NoExec $ "images" </> "foreign.png"
+      Directory "bt4" [
+        Directory "css" [
+          bt4file $ "css" </> "bootstrap.min.css",
+          bt4file $ "css" </> "spicey.css"
+        ],
+        Directory "js" [
+          bt4file $ "js" </> "bootstrap.bundle.min.js",
+          bt4file $ "js" </> "jquery.slim.min.js"
+        ],
+        Directory "img" [
+          bt4file $ "img" </> "favicon.ico",
+          bt4file $ "img" </> "spicey-logo.png",
+          bt4file $ "img" </> "text.png",
+          bt4file $ "img" </> "time.png",
+          bt4file $ "img" </> "number.png",
+          bt4file $ "img" </> "foreign.png"
+        ]
       ]
     ]
   ]
+ where
+  srcfile f = ResourceFile NoExec $ "src" </> f
+  bt4file f = ResourceFile NoExec $ "public" </> "bt4" </> f
 
 -- Replace every occurrence of `XXXCURRYHOMEXXX` by `installDir` and
 -- every occurrince of `XXXICONTROLLERXXX` by

@@ -10,7 +10,7 @@ module View.SpiceySystem
  where
 
 import HTML.Base
-import HTML.Styles.Bootstrap3 (defaultButton, hrefButton, primButton)
+import HTML.Styles.Bootstrap4 ( hrefScndSmButton, primSmButton, scndButton )
 
 import Config.UserProcesses
 import System.Processes
@@ -25,11 +25,11 @@ loginView :: Maybe String -> [HtmlExp]
 loginView currlogin =
   case currlogin of
    Nothing -> [h3 [htxt "Login as:"],
-               textField loginfield "",
-               defaultButton "Login" loginHandler]
+               textField loginfield "", nbsp,
+               primSmButton "Login" loginHandler]
    Just _  -> [h3 [htxt "Really logout?"],
-               primButton "Logout" logoutHandler,
-               hrefButton "?" [htxt "Cancel"]]
+               primSmButton "Logout" logoutHandler, nbsp,
+               hrefScndSmButton "?" [htxt "Cancel"]]
  where
   loginfield free
 

@@ -33,7 +33,7 @@ generateControllersForEntity erdname allEntities
    [ "Global", "Maybe", "Time"
    , "HTML.Base", "HTML.Session", "HTML.WUI"
    , erdname
-   , "Config.EntityRoutes", "Config.Storage" , "Config.UserProcesses"
+   , "Config.EntityRoutes", "Config.UserProcesses"
    , sessionInfoModule, authorizationModule, enauthModName, spiceyModule
    , entitiesToHtmlModule erdname
    , viewModuleName ename
@@ -264,7 +264,7 @@ newStore _ entity@(Entity entityName _) relationships allEntities =
       (applyF (globalModule "global")
         [constF (sessionModule "emptySessionStore"),
          applyF (globalModule "Persistent")
-          [applyF (storageModule "inDataDir")
+          [applyF (sessionModule "inSessionDataDir")
             [string2ac $ "new" ++ entityName ++ "Store"]]])]
 
 
@@ -490,7 +490,7 @@ editStore erdname entity@(Entity entityName _) relationships allEntities =
       (applyF (globalModule "global")
         [constF (sessionModule "emptySessionStore"),
          applyF (globalModule "Persistent")
-          [applyF (storageModule "inDataDir")
+          [applyF (sessionModule "inSessionDataDir")
             [string2ac $ "edit" ++ entityName ++ "Store"]]])]
 
 --- Computes the tuple type of the data to be stored and manipulated

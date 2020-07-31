@@ -25,6 +25,7 @@ module System.Spicey (
   ) where
 
 import Char         ( isSpace, isDigit )
+import FilePath     ( (</>) )
 import Global
 import ReadShowTerm ( readsQTerm )
 import Time
@@ -32,10 +33,9 @@ import Time
 import Database.CDBI.Connection ( SQLResult )
 import HTML.Base
 import HTML.Session
-import HTML.Styles.Bootstrap3
+import HTML.Styles.Bootstrap4
 import HTML.WUI
 
-import Config.Storage
 import Config.UserProcesses
 import System.Routes
 import System.Processes
@@ -117,9 +117,10 @@ confirmDeletionPage _ question = do
   case ctrlargs of
     (_:args) -> return $
       [h3 [htxt question],
-       par [hrefButton (showControllerURL entity ("destroy":args)) [htxt "Yes"],
+       par [hrefPrimSmButton (showControllerURL entity ("destroy":args))
+                             [htxt "Yes"],
             nbsp,
-            hrefButton (showControllerURL entity ["list"]) [htxt "No"]]]
+            hrefScndSmButton (showControllerURL entity ["list"]) [htxt "No"]]]
     _ -> displayUrlError
 
 
@@ -195,8 +196,8 @@ renderWUI _ title buttontag cancelurl _ hexp handler =
   [h1 [htxt title],
    hexp,
    breakline,
-   primButton buttontag (\env -> handler env >>= getPage),
-   hrefButton cancelurl [htxt "Cancel"]]
+   primSmButton buttontag (\env -> handler env >>= getPage), nbsp,
+   hrefScndSmButton cancelurl [htxt "Cancel"]]
 
 
 --- A WUI for manipulating CalendarTime entities.
@@ -258,7 +259,7 @@ spiceyTitle = "Spicey Application"
 
 --- The home URL and brand shown at the left top of the main page.
 spiceyHomeBrand :: (String, [HtmlExp])
-spiceyHomeBrand = ("?", [homeIcon, htxt " Home"])
+spiceyHomeBrand = ("?", [htxt " Home"])
 
 --- The standard footer of the Spicey page.
 spiceyFooter :: [HtmlExp]
@@ -281,7 +282,7 @@ getPage viewblock = case viewblock of
     msg        <- getPageMessage
     login      <- getSessionLogin
     lasturl    <- getLastUrl
-    withSessionCookie $ bootstrapPage "." ["bootstrap.min","spicey"]
+    withSessionCookie $ bootstrapPage favIcon cssIncludes jsIncludes
       spiceyTitle spiceyHomeBrand routemenu (rightTopMenu login)
       0 []  [h1 [htxt spiceyTitle]]
       (messageLine msg lasturl : viewblock ) spiceyFooter
@@ -293,13 +294,24 @@ getPage viewblock = case viewblock of
       else HtmlStruct "header" [("class","pagemessage")] [htxt msg]
         
   rightTopMenu login =
-    [[href "?login" (maybe [loginIcon, nbsp, htxt "Login"]
-                           (\n -> [logoutIcon, nbsp, htxt "Logout"
-                                  ,htxt $ " ("
-                                  ,style "text-success" [userIcon]
-                                  ,htxt $ " "++n++")"
-                                  ])
+    [[hrefNav "?login" (maybe [htxt "Login"]
+                              (\n -> [ htxt "Logout"
+                                     , htxt $ " (" ++ n ++ ")"
+                                     ])
                            login)]]
+
+favIcon :: String
+favIcon = "bt4" </> "img" </> "favicon.ico"
+
+cssIncludes :: [String]
+cssIncludes =
+  map (\n -> "bt4" </> "css" </> n ++ ".css")
+      ["bootstrap.min", "spicey"]
+
+jsIncludes :: [String]
+jsIncludes = 
+  map (\n -> "bt4" </> "js" </> n ++ ".js")
+      ["jquery.slim.min", "bootstrap.bundle.min"]
 
 -------------------------------------------------------------------------
 -- Action performed when a "cancel" button is pressed.
@@ -385,7 +397,8 @@ spTable items = table items  `addClass` "table table-hover table-condensed"
 
 --- Definition of the session state to store the page message (a string).
 pageMessage :: Global (SessionStore String)
-pageMessage = global emptySessionStore (Persistent (inDataDir "pageMessage"))
+pageMessage =
+  global emptySessionStore (Persistent (inSessionDataDir "pageMessage"))
 
 --- Gets the page message and delete it.
 getPageMessage :: IO String
@@ -404,7 +417,7 @@ setPageMessage msg = putSessionData pageMessage msg
 
 --- Definition of the session state to store the last URL (as a string).
 lastUrls :: Global (SessionStore [String])
-lastUrls = global emptySessionStore (Persistent (inDataDir "lastUrls"))
+lastUrls = global emptySessionStore (Persistent (inSessionDataDir "lastUrls"))
 
 --- Gets the list of URLs of the current session.
 getLastUrls :: IO [String]

@@ -8,6 +8,8 @@ module System.Routes
  where
 
 import HTML.Base
+import HTML.Styles.Bootstrap4 ( hrefNav )
+
 import Config.RoutesData
 
 --generated in RoutesData
@@ -47,10 +49,10 @@ getRouteMenu = do
    getLinks ((name, matcher, _):restroutes) =
      case matcher of
        Exact string -> if string == "login"
-                       then getLinks restroutes
-                       else [(href ("?" ++ string) [htxt name])]
-                            : getLinks restroutes
-       Prefix s1 s2 -> [href ("?"++s1++"/"++s2) [htxt name]]
-                             : getLinks restroutes
+                         then getLinks restroutes
+                         else [(hrefNav ("?" ++ string) [htxt name])] :
+                              getLinks restroutes
+       Prefix s1 s2 -> [hrefNav ("?"++s1++"/"++s2) [htxt name]] :
+                       getLinks restroutes
        _ -> getLinks restroutes
    getLinks [] = []

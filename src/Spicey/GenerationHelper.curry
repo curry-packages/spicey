@@ -77,11 +77,15 @@ entitiesToHtmlModule :: String -> String
 entitiesToHtmlModule erdname = "View.EntitiesToHtml"
 
 bootstrapModule :: String
-bootstrapModule = "HTML.Styles.Bootstrap3"
+bootstrapModule = "HTML.Styles.Bootstrap4"
 
 -- Name of hrefButton operation:
 hrefButtonName :: QName
-hrefButtonName = (bootstrapModule,"hrefButton")
+hrefButtonName = (bootstrapModule, "hrefPrimSmButton")
+
+-- Name of hrefSmallButton operation:
+hrefSmallButtonName :: QName
+hrefSmallButtonName = (bootstrapModule, "hrefPrimBadge")
 
 relatedRelation :: String -> Relationship -> String
 relatedRelation en (Relationship _ [REnd en1 _ _, REnd en2 _ _]) =

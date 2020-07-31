@@ -69,9 +69,9 @@ deploy: checkdeploy
 	cp -r public/* $(WEBSERVERDIR)
 	chmod -R go+rX $(WEBSERVERDIR)
 	# recreate directory for storing local session data:
-	/bin/rm -rf $(WEBSERVERDIR)/data
-	mkdir -p $(WEBSERVERDIR)/data
-	chmod 700 $(WEBSERVERDIR)/data
+	/bin/rm -rf $(WEBSERVERDIR)/sessiondata
+	mkdir -p $(WEBSERVERDIR)/sessiondata
+	chmod 700 $(WEBSERVERDIR)/sessiondata
 
 $(WEBSERVERDIR)/spicey.cgi: src/*.curry src/*/*.curry
 	$(CPM) exec $(CURRY2CGI) --system="$(SYSTEM)" \

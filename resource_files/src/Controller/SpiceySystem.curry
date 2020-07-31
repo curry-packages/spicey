@@ -14,7 +14,6 @@ module Controller.SpiceySystem
 import Global
 import ReadNumeric
 
-import Config.Storage
 import Config.UserProcesses
 import System.Spicey
 import HTML.Base
@@ -38,7 +37,7 @@ loginFormDef = formDefWithID "Controller.SpiceySystem.loginFormDef"
 --- The data processed by the login form.
 loginViewData :: Global (SessionStore (Maybe String))
 loginViewData =
-  global emptySessionStore (Persistent (inDataDir "loginViewData"))
+  global emptySessionStore (Persistent (inSessionDataDir "loginViewData"))
 
 -----------------------------------------------------------------------------
 --- Controller for showing and selecting user processes.

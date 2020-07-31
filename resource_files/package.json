@@ -14,8 +14,8 @@
         "wui2"       : ">= 0.0.1"
     },
     "compilerCompatibility": {
-        "pakcs": ">= 2.0.0",
-        "kics2": ">= 2.0.0"
+        "pakcs": ">= 2.0.0, < 3.0.0",
+        "kics2": ">= 2.0.0, < 3.0.0"
     },
     "sourceDirs": [ "src", "src/Model" ]
 }

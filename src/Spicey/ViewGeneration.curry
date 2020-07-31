@@ -298,9 +298,9 @@ showView erdname (Entity entityName attrlist) relationships allEntities =
                             [(length manyToOneEntities + 3)..])
                   ),
                list2ac [applyF hrefButtonName
-                         [string2ac ("?"++entityName++"/list"),
-                          list2ac [applyF (html"htxt")
-                            [string2ac ("back to "++entityName++" list")]]]]
+                         [string2ac ("?" ++ entityName ++ "/list"),
+                          list2ac [applyF (html "htxt")
+                            [string2ac ("back to " ++ entityName ++ " list")]]]]
               ]
             )]
       
@@ -361,17 +361,17 @@ listView erdname (Entity entityName attrlist) _ _ =
                 list2ac [],
                 list2ac
                  [list2ac
-                   [applyF hrefButtonName
+                   [applyF hrefSmallButtonName
                      [applyF (spiceyModule,"showRoute") [CVar envar],
-                      list2ac [applyF (html "htxt") [string2ac "show"]]]],
+                      list2ac [applyF (html "htxt") [string2ac "Show"]]]],
                   list2ac
-                   [applyF hrefButtonName
+                   [applyF hrefSmallButtonName
                      [applyF (spiceyModule,"editRoute") [CVar envar],
-                      list2ac [applyF (html "htxt") [string2ac "edit"]]]],
+                      list2ac [applyF (html "htxt") [string2ac "Edit"]]]],
                   list2ac
-                   [applyF hrefButtonName
+                   [applyF hrefSmallButtonName
                      [applyF (spiceyModule,"deleteRoute") [CVar envar],
-                      list2ac [applyF (html "htxt") [string2ac "delete"]]]]
+                      list2ac [applyF (html "htxt") [string2ac "Delete"]]]]
               ]]
             ]
             )])
@@ -379,7 +379,7 @@ listView erdname (Entity entityName attrlist) _ _ =
     ]
  where
   infovar = (0, "sinfo")
-  entsvar = (1, (lowerFirst entityName)++"s")
+  entsvar = (1, lowerFirst entityName ++ "s")
   envar   = (2, lowerFirst entityName)
     
 -- Auxiliaries
