@@ -40,19 +40,18 @@ getControllerReference url = getRoutes >>= return . findControllerReference
 --- each page. As a default, all routes specified with URL matcher
 --- `Exact` in the module RouteData, except for "login",
 --- are taken as menu entries.
-getRouteMenu :: IO [[HtmlExp]]
+getRouteMenu :: IO [[BaseHtml]]
 getRouteMenu = do
   routes <- getRoutes
   return $ getLinks routes
  where
-   getLinks :: [Route] -> [[HtmlExp]]
-   getLinks ((name, matcher, _):restroutes) =
-     case matcher of
-       Exact string -> if string == "login"
-                         then getLinks restroutes
-                         else [(hrefNav ("?" ++ string) [htxt name])] :
-                              getLinks restroutes
-       Prefix s1 s2 -> [hrefNav ("?"++s1++"/"++s2) [htxt name]] :
-                       getLinks restroutes
-       _ -> getLinks restroutes
-   getLinks [] = []
+  getLinks []                                = []
+  getLinks ((name, matcher, _) : restroutes) =
+    case matcher of
+      Exact string -> if string == "login"
+                        then getLinks restroutes
+                        else [(hrefNav ("?" ++ string) [htxt name])] :
+                             getLinks restroutes
+      Prefix s1 s2 -> [hrefNav ("?"++s1++"/"++s2) [htxt name]] :
+                      getLinks restroutes
+      _ -> getLinks restroutes

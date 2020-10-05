@@ -15,14 +15,16 @@ generateToHtml erdname allEntities relationships = simpleCurryProg
   [] -- typedecls
   -- functions
   (
-   foldr1 (++) (map (\e -> generateToHtmlForEntity erdname allEntities e relationships)
-                    (filter (not . Spicey.GenerationHelper.isGenerated)
-                            allEntities))
+   foldr1 (++)
+     (map (\e -> generateToHtmlForEntity erdname allEntities e relationships)
+          (filter (not . Spicey.GenerationHelper.isGenerated)
+                  allEntities))
   )
   []
   
   
-generateToHtmlForEntity :: String -> [Entity] -> Entity -> [Relationship] -> [CFuncDecl]
+generateToHtmlForEntity :: String -> [Entity] -> Entity -> [Relationship]
+                        -> [CFuncDecl]
 generateToHtmlForEntity erdname allEntities (Entity ename attrlist) relationships =
   [toListView    erdname (Entity ename (filter noKeyAttr attrlist)) relationships allEntities,
    toShortView   erdname (Entity ename (filter noKeyAttr attrlist)) relationships allEntities,
@@ -30,19 +32,19 @@ generateToHtmlForEntity erdname allEntities (Entity ename attrlist) relationship
    labelList     erdname (Entity ename (filter noKeyAttr attrlist)) relationships allEntities
   ]
  where
-   noKeyAttr a = (notKey a) && (notPKey a)
+  noKeyAttr a = (notKey a) && (notPKey a)
   
   
 type ToHtmlGenerator = String -> Entity -> [Relationship] -> [Entity] -> CFuncDecl
 
 toListView :: ToHtmlGenerator
 toListView erdname (Entity entityName attrlist) _ _ =
- stCmtFunc
+ cmtfunc
   ("The list view of a "++entityName++" entity in HTML format.\n"++
    "This view is used in a row of a table of all entities.")
-  (thisModuleName erdname, (lowerFirst entityName)++"ToListView") 2 Public
-  (baseType (erdname, entityName)
-    ~> listType (listType (baseType (html "HtmlExp"))))
+  (thisModuleName erdname, lowerFirst entityName ++ "ToListView") 2 Public
+  (withHTMLContext
+     (baseType (erdname, entityName) ~> listType (listType htmlTVar)))
   [simpleRule [CPVar (1, lowerFirst entityName)]
      (list2ac (
             (map (\a -> list2ac [
@@ -92,19 +94,20 @@ toDetailsView erdname (Entity entityName attrlist) relationships allEntities =
      eName = lowerFirst entityName
      evar  = (1,eName)
   in
- stCmtFunc
-  ("The detailed view of a "++entityName++" entity in HTML format.\n"++
+ cmtfunc
+  ("The detailed view of a " ++ entityName ++ " entity in HTML format.\n" ++
    if null (manyToOneEntities ++ manyToManyEntities) then "" else
    "It also takes associated entities for every associated entity type.")
-  (thisModuleName erdname, (lowerFirst entityName)++"ToDetailsView")
+  (thisModuleName erdname, lowerFirst entityName ++ "ToDetailsView")
   2
   Public
   -- function type
-  (foldr CFuncType (listType (baseType (html "HtmlExp")))
-         ([baseType (erdname, entityName)] ++
-          (map ctvar manyToOneEntities) ++ -- defaults for n:1
-          (map (\name -> listType (ctvar name)) manyToManyEntities)
-         )
+  (withHTMLContext $
+     foldr CFuncType (listType htmlTVar)
+           ([baseType (erdname, entityName)] ++
+            (map ctvar manyToOneEntities) ++ -- defaults for n:1
+            (map (\name -> listType (ctvar name)) manyToManyEntities)
+           )
   )
   [CRule
     ( -- parameters
@@ -163,23 +166,23 @@ labelList erdname (Entity entityName attrlist) relationships allEntities =
     manyToManyEntities = manyToMany allEntities (Entity entityName attrlist)
     manyToOneEntities = manyToOne (Entity entityName attrlist) relationships
   in
-   stCmtFunc
+   cmtfunc
     ("The labels of a "++entityName++" entity, as used in HTML tables.")
     (thisModuleName erdname, (lowerFirst entityName)++"LabelList") 2 Public
-    (
-      listType (listType (baseType (html "HtmlExp")))
-    )
+    (withHTMLContext (listType (listType htmlTVar)))
     [simpleRule []
       (list2ac (
             (map (\ (Attribute name domain _ _) ->
-                   list2ac [applyF (html "textstyle")
-                               [string2ac ("spicey_label spicey_label_for_type_"++
-                                           domainToString domain),
-                                string2ac name]])
+                   list2ac
+                     [applyF (html "textstyle")
+                             [string2ac ("spicey_label spicey_label_for_type_"++
+                                         domainToString domain),
+                              string2ac name]])
                  attrlist) ++
-            (map (\s -> list2ac [applyF (html "textstyle")
-                                  [string2ac "spicey_label spicey_label_for_type_relation",
-                                   string2ac s]])
+            (map (\s -> list2ac
+                          [applyF (html "textstyle")
+                            [string2ac "spicey_label spicey_label_for_type_relation",
+                             string2ac s]])
                  (manyToOneEntities++manyToManyEntities))
           )
        )]

@@ -38,7 +38,7 @@ randomPassword = randomString
 --- Gets the login name of the current session
 --- (or the Nothing if there is no login).
 getSessionLogin :: IO (Maybe String)
-getSessionLogin = getUserSessionInfo >>= return . userLoginOfSession
+getSessionLogin = liftM userLoginOfSession getUserSessionInfo
 
 --- Stores a login name in the current session.
 --- The authentication has to be done before!

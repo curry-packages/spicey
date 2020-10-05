@@ -27,8 +27,8 @@ import View.SpiceySystem
 loginController :: Controller
 loginController = do
   login <- getSessionLogin
-  putSessionData loginViewData login
-  return [formExp loginFormDef]
+  writeSessionData loginViewData login
+  return [formElem loginFormDef]
 
 loginFormDef :: HtmlFormDef (Maybe String)
 loginFormDef = formDefWithID "Controller.SpiceySystem.loginFormDef"

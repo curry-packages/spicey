@@ -47,20 +47,20 @@ currentProcess = global emptySessionStore Temporary
 --- Returns the process state stored in the user session.
 getCurrentProcess :: IO (Maybe _)
 getCurrentProcess = do
-  curProc <- getSessionMaybeData currentProcess
+  curProc <- fromFormReader $ getSessionMaybeData currentProcess
   case curProc of
     Just sids -> return $ Just (readQTerm sids)
     Nothing -> return Nothing
 
 --- Is the current user session in a process interaction?
 isInProcess :: IO Bool
-isInProcess =
+isInProcess = fromFormReader $
   getSessionMaybeData currentProcess >>= return . maybe False (const True)
 
 --- Saves the state of a process, i.e., a node in the process graph,
 --- in the user session.
 saveCurrentProcess :: _ -> IO ()
-saveCurrentProcess sid = putSessionData currentProcess (showQTerm sid)
+saveCurrentProcess sid = writeSessionData currentProcess (showQTerm sid)
 
 --- Deletes the process in the user session.
 removeCurrentProcess :: IO ()
@@ -68,7 +68,7 @@ removeCurrentProcess = removeSessionData currentProcess
 
 --- Starts a new process with a given name. In the next step, the
 --- controller of the start state of the process is executed.
-startProcess :: String -> IO [HtmlExp]
+startProcess :: String -> IO [BaseHtml]
 startProcess pname =
   maybe (return [htxt $ "startProcess: process not found: " ++ pname])
         (\state -> do saveCurrentProcess state

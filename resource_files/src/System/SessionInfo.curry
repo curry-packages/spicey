@@ -16,6 +16,7 @@ module System.SessionInfo (
 
 import Global
 
+import HTML.Base    ( fromFormReader )
 import HTML.Session
 
 --------------------------------------------------------------------------
@@ -46,10 +47,10 @@ userSessionInfo =
 --- Gets the data of the current user session.
 getUserSessionInfo :: IO UserSessionInfo
 getUserSessionInfo =
-  getSessionData userSessionInfo emptySessionInfo
+  fromFormReader $ getSessionData userSessionInfo emptySessionInfo
 
 --- Updates the data of the current user session.
 updateUserSessionInfo :: (UserSessionInfo -> UserSessionInfo) -> IO ()
-updateUserSessionInfo = updateSessionData userSessionInfo emptySessionInfo
+updateUserSessionInfo = modifySessionData userSessionInfo emptySessionInfo
 
 --------------------------------------------------------------------------

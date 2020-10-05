@@ -208,9 +208,17 @@ viewFunctionName :: String -> String -> QName
 viewFunctionName entityName viewFunction =
   (viewModuleName entityName, viewFunction ++ entityName ++ "View")
 
+--- The type of view blocks, i.e., `[BaseHtml]`.
 viewBlockType :: CTypeExpr
-viewBlockType = listType (baseType (html "HtmlExp"))
+viewBlockType = listType (baseType (html "BaseHtml"))
 
+-- Attach the type class `HTML` with type variable to a type expression.
+withHTMLContext :: CTypeExpr -> CQualTypeExpr
+withHTMLContext = CQualType (CContext [(html "HTML", htmlTVar)])
+
+-- The type variable `h` used to `HTML` types in type expressions.
+htmlTVar :: CTypeExpr
+htmlTVar = CTVar (0,"h")
 
 attrType :: Attribute -> CTypeExpr
 attrType (Attribute _ t k False) =

@@ -47,7 +47,7 @@ import System.Authentication
 -- here: a representation of a HTML page
 type Viewable = HtmlPage
 
-type ViewBlock = [HtmlExp]
+type ViewBlock = [BaseHtml]
 
 --- Controllers contains all logic and their result should be a Viewable.
 --- if the behavior of controller should depend on URL parameters
@@ -90,7 +90,7 @@ applyControllerOn (Just userkey) getuser usercontroller =
 --- A controller to redirect to an URL starting with "?"
 --- (see implementation of `getPage`).
 redirectController :: String -> Controller
-redirectController url = return [HtmlText url]
+redirectController url = return [htmlText url]
 
 nextController :: Controller -> _ -> IO HtmlPage
 nextController controller _ = do
@@ -258,11 +258,11 @@ spiceyTitle :: String
 spiceyTitle = "Spicey Application"
 
 --- The home URL and brand shown at the left top of the main page.
-spiceyHomeBrand :: (String, [HtmlExp])
+spiceyHomeBrand :: (String, [BaseHtml])
 spiceyHomeBrand = ("?", [htxt " Home"])
 
 --- The standard footer of the Spicey page.
-spiceyFooter :: [HtmlExp]
+spiceyFooter :: [BaseHtml]
 spiceyFooter =
   [par [htxt "powered by",
         href "http://www.informatik.uni-kiel.de/~pakcs/spicey"
@@ -275,8 +275,8 @@ spiceyFooter =
 --- generates a redirection page.
 getPage :: ViewBlock -> IO HtmlPage
 getPage viewblock = case viewblock of
-  [HtmlText ""]          -> return $ redirectPage "spicey.cgi"
-  [HtmlText ('?':route)] -> return $ redirectPage ('?':route)
+  [BaseText ""]          -> return $ redirectPage "spicey.cgi"
+  [BaseText ('?':route)] -> return $ redirectPage ('?':route)
   _ -> do
     routemenu  <- getRouteMenu
     msg        <- getPageMessage
@@ -285,20 +285,21 @@ getPage viewblock = case viewblock of
     withSessionCookie $ bootstrapPage favIcon cssIncludes jsIncludes
       spiceyTitle spiceyHomeBrand routemenu (rightTopMenu login)
       0 []  [h1 [htxt spiceyTitle]]
-      (messageLine msg lasturl : viewblock ) spiceyFooter
+      (messageLine msg lasturl : viewblock)
+      spiceyFooter
  where
   messageLine msg lasturl =
     if null msg
-      then HtmlStruct "header" [("class","pagemessage pagemessage-empty")]
-                      [htxt ("Last page: "++lasturl)]
-      else HtmlStruct "header" [("class","pagemessage")] [htxt msg]
+      then htmlStruct "header" [("class","pagemessage pagemessage-empty")]
+                      [htxt ("Last page: " ++ lasturl)]
+      else htmlStruct "header" [("class","pagemessage")] [htxt msg]
         
   rightTopMenu login =
     [[hrefNav "?login" (maybe [htxt "Login"]
                               (\n -> [ htxt "Logout"
                                      , htxt $ " (" ++ n ++ ")"
                                      ])
-                           login)]]
+                              login)]]
 
 favIcon :: String
 favIcon = "bt4" </> "img" </> "favicon.ico"
@@ -346,48 +347,48 @@ renderLabels labels hexps =
   enlargeInput h = h `addClass` "input-xxlarge"
 
 -- Convert standard datatype values to HTML representation
-stringToHtml :: String -> HtmlExp
+stringToHtml :: HTML h => String -> h
 stringToHtml s = textstyle "type_string" s
 
-maybeStringToHtml :: Maybe String -> HtmlExp
+maybeStringToHtml :: HTML h => Maybe String -> h
 maybeStringToHtml s = textstyle "type_string" (maybe "" id s)
 
-intToHtml :: Int -> HtmlExp
+intToHtml :: HTML h => Int -> h
 intToHtml i = textstyle "type_int" (show i)
 
-maybeIntToHtml :: Maybe Int -> HtmlExp
+maybeIntToHtml :: HTML h => Maybe Int -> h
 maybeIntToHtml i = textstyle "type_int" (maybe "" show i)
 
-floatToHtml :: Float -> HtmlExp
+floatToHtml :: HTML h => Float -> h
 floatToHtml i = textstyle "type_float" (show i)
 
-maybeFloatToHtml :: Maybe Float -> HtmlExp
+maybeFloatToHtml :: HTML h => Maybe Float -> h
 maybeFloatToHtml i = textstyle "type_float" (maybe "" show i)
 
-boolToHtml :: Bool -> HtmlExp
+boolToHtml :: HTML h => Bool -> h
 boolToHtml b = textstyle "type_bool" (show b)
 
-maybeBoolToHtml :: Maybe Bool -> HtmlExp
+maybeBoolToHtml :: HTML h => Maybe Bool -> h
 maybeBoolToHtml b = textstyle "type_bool" (maybe "" show b)
 
-dateToHtml :: ClockTime -> HtmlExp
+dateToHtml :: HTML h => ClockTime -> h
 dateToHtml ct = textstyle "type_calendartime" (toDayString (toUTCTime ct))
 
-maybeDateToHtml :: Maybe ClockTime -> HtmlExp
+maybeDateToHtml :: HTML h => Maybe ClockTime -> h
 maybeDateToHtml ct =
   textstyle "type_calendartime" (maybe "" (toDayString . toUTCTime) ct)
 
-userDefinedToHtml :: Show a => a -> HtmlExp
+userDefinedToHtml :: (Show a, HTML h) => a -> h
 userDefinedToHtml ud = textstyle "type_string" (show ud)
 
-maybeUserDefinedToHtml :: Show a => Maybe a -> HtmlExp
+maybeUserDefinedToHtml :: (Show a, HTML h) => Maybe a -> h
 maybeUserDefinedToHtml ud = textstyle "type_string" (maybe "" show ud)
 
 --------------------------------------------------------------------------
 -- Auxiliary HTML items:
 
 --- Standard table in Spicey.
-spTable :: [[[HtmlExp]]] -> HtmlExp
+spTable :: HTML h => [[[h]]] -> h
 spTable items = table items  `addClass` "table table-hover table-condensed"
 
 --------------------------------------------------------------------------
@@ -403,13 +404,13 @@ pageMessage =
 --- Gets the page message and delete it.
 getPageMessage :: IO String
 getPageMessage = do
-  msg <- getSessionData pageMessage ""
+  msg <- fromFormReader $ getSessionData pageMessage ""
   removeSessionData pageMessage
   return msg
 
 --- Set the page message of the current session.
 setPageMessage :: String -> IO ()
-setPageMessage msg = putSessionData pageMessage msg
+setPageMessage msg = writeSessionData pageMessage msg
 
 --------------------------------------------------------------------------
 -- Another example for using sessions.
@@ -421,7 +422,7 @@ lastUrls = global emptySessionStore (Persistent (inSessionDataDir "lastUrls"))
 
 --- Gets the list of URLs of the current session.
 getLastUrls :: IO [String]
-getLastUrls = getSessionData lastUrls []
+getLastUrls = fromFormReader $ getSessionData lastUrls []
 
 --- Gets the last URL of the current session (or "?").
 getLastUrl :: IO String
@@ -432,6 +433,6 @@ getLastUrl = do urls <- getLastUrls
 saveLastUrl :: String -> IO ()
 saveLastUrl url = do
   urls <- getLastUrls
-  putSessionData lastUrls (url:urls)
+  writeSessionData lastUrls (url:urls)
 
 --------------------------------------------------------------------------

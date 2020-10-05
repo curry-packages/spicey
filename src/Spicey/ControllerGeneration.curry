@@ -20,8 +20,7 @@ defCtrlModName :: String
 defCtrlModName = "Controller.DefaultController"
 
 -- "main"-function
-generateControllersForEntity :: String -> [Entity] -> Entity
-                             -> [Relationship]
+generateControllersForEntity :: String -> [Entity] -> Entity -> [Relationship]
                              -> CurryProg
 generateControllersForEntity erdname allEntities
                              entity@(Entity ename attrlist) relationships =
@@ -165,7 +164,7 @@ newController erdname (Entity entityName attrList) relationships allEntities =
           else []) ++
          [CSExpr setParCall,         
           CSExpr $ applyF (pre "return")
-            [list2ac [applyF (html "formExp")
+            [list2ac [applyF (html "formElem")
                         [constF (controllerFormName entityName "new")]]]
          ])]]
  where
@@ -374,7 +373,7 @@ editController erdname (Entity entityName attrList) relationships allEntities =
               (zip manyToManyEntities [1..]) ++
             [CSExpr setParCall,
              CSExpr $ applyF (pre "return")
-               [list2ac [applyF (html "formExp")
+               [list2ac [applyF (html "formElem")
                            [constF (controllerFormName entityName "edit")]]]
             ])])]
  where
