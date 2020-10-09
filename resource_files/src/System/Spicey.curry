@@ -191,7 +191,7 @@ showControllerURL ctrlurl params = '?' : ctrlurl ++ concatMap ('/':) params
 --- @param hexp       - the HTML expression representing the WUI form
 --- @param handler    - the handler for submitting data
 renderWUI :: UserSessionInfo -> String -> String -> String
-          -> a -> HtmlExp -> (CgiEnv -> Controller) -> [HtmlExp]
+          -> a -> HtmlExp -> (HtmlEnv -> Controller) -> [HtmlExp]
 renderWUI _ title buttontag cancelurl _ hexp handler =
   [h1 [htxt title],
    hexp,
