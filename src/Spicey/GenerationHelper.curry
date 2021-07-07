@@ -1,11 +1,12 @@
 module Spicey.GenerationHelper where
 
+import Data.Char
+
 import AbstractCurry.Types
 import AbstractCurry.Build
-import Char
 import Database.ERD
 import Database.ERD.Goodies
-import Time
+import Data.Time
 
 ------------------------------------------------------------------------
 -- lower the first character in a string
@@ -29,6 +30,12 @@ html :: String -> QName
 html f = ("HTML.Base", f)
 
 -- Some module names:
+listModule :: String
+listModule = "Data.List"
+
+timeModule :: String
+timeModule = "Data.Time"
+
 spiceyModule :: String
 spiceyModule = "System.Spicey"
 
@@ -38,10 +45,6 @@ authenticationModule = "System.Authentication"
 -- Name of generic authorization module:
 authorizationModule :: String
 authorizationModule = "System.Authorization"
-
---- Converts a name into a qualified name of the module "Global".
-globalModule :: String -> QName
-globalModule n = ("Global", n)
 
 --- Converts a name into a qualified name of the module "HTML.Base".
 htmlModule :: String -> QName
@@ -264,8 +267,8 @@ attrDefaultValues defaultctime attrs = map defaultValue attrs
     BoolDom   (Just b) -> addJust (constF (pre (if b then "True" else "False")))
     DateDom   Nothing  -> nothingOrDefault
     DateDom   (Just (CalendarTime y mo d h m s tz))
-                       -> addJust (applyF ("Time", "toClockTime")
-                                    [applyF ("Time", "CalendarTime")
+                       -> addJust (applyF (timeModule, "toClockTime")
+                                    [applyF (timeModule, "CalendarTime")
                                       (map (CLit . CIntc) [y,mo,d,h,m,s,tz])])
     UserDefined _ _    -> nothingOrDefault
     KeyDom _           -> nothingOrDefault
@@ -346,8 +349,8 @@ widgetFor domain null =
     if null
      then applyF (spiceyModule,"wUncheckMaybe")
             [domainDefaultValue
-               (applyF ("Time", "toClockTime")
-                 [applyF ("Time", "CalendarTime")
+               (applyF (timeModule, "toClockTime")
+                 [applyF (timeModule, "CalendarTime")
                          (map (CLit . CIntc) [2018,1,1,0,0,0,0])])
                domain, e]
      else e

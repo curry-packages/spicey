@@ -2,13 +2,16 @@
 
 module Spicey.SpiceUp where
 
+import Control.Monad        ( unless, when )
+import Curry.Compiler.Distribution ( installDir )
+import Data.List            ( isSuffixOf, last )
+import System.Environment   ( getArgs, setEnv )
+
 import Database.ERD         ( ERD(..), Entity(..), readERDTermFile )
 import Database.ERD.Goodies ( erdName, storeERDFromProgram )
-import Directory
-import Distribution         ( installDir )
-import FilePath             ( (</>), takeFileName )
-import List                 ( isSuffixOf, last )
-import System               ( setEnviron, system, getArgs, exitWith )
+import System.Directory
+import System.FilePath      ( (</>), takeFileName )
+import System.Process       ( exitWith, system )
 
 import Spicey.PackageConfig ( packagePath, packageVersion, packageLoadPath )
 import Spicey.Scaffolding
@@ -16,7 +19,7 @@ import Spicey.Scaffolding
 systemBanner :: String
 systemBanner =
   let bannerText = "Spicey Web Framework (Version " ++ packageVersion ++
-                   " of 26/09/20)"
+                   " of 07/07/21)"
       bannerLine = take (length bannerText) (repeat '-')
    in bannerLine ++ "\n" ++ bannerText ++ "\n" ++ bannerLine
 
@@ -25,12 +28,12 @@ data FileMode = Exec | NoExec
 
 setFileMode :: FileMode -> String -> IO ()
 setFileMode fmode filename =
-  if fmode==Exec then system ("chmod +x \"" ++ filename ++ "\"") >> done
-                 else done
+  if fmode==Exec then system ("chmod +x \"" ++ filename ++ "\"") >> return ()
+                 else return ()
 
 data DirTree =
-   Directory String [DirTree] -- a directory to be created
- | ResourceFile FileMode String   -- a file to be copied from resource directory
+   Directory String [DirTree]   -- a directory to be created
+ | ResourceFile FileMode String -- a file to be copied from resource directory
  | ResourcePatchFile FileMode String (ERD -> String -> String)
     -- file to be copied from resource directory
     -- where its contents is patched by the given function
@@ -156,7 +159,7 @@ createStructure target_path resource_dir erd termfile db_path
   ifNotExistsDo full_path $ do
     putStrLn $ "Creating directory '"++full_path++"'..."
     createDirectory full_path
-  mapIO_ (createStructure full_path resource_dir erd termfile db_path) subtree
+  mapM_ (createStructure full_path resource_dir erd termfile db_path) subtree
 
 createStructure target_path _ erd termfile db_path
                 (GeneratedFromERD generatorFunction) =
@@ -177,7 +180,7 @@ main = do
  where
   createStructureWith orgfile dbfile = do
     -- set CURRYPATH in order to compile ERD model (which requires Database.ERD)
-    unless (null packageLoadPath) $ setEnviron "CURRYPATH" packageLoadPath
+    unless (null packageLoadPath) $ setEnv "CURRYPATH" packageLoadPath
     -- The directory containing the project generator:
     let resourcedir = packagePath </> "resource_files"
     exfile <- doesFileExist orgfile

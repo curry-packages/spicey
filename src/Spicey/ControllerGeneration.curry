@@ -2,7 +2,7 @@
 
 module Spicey.ControllerGeneration where
 
-import Char(toLower)
+import Data.Char ( toLower )
 
 import AbstractCurry.Types
 import AbstractCurry.Build
@@ -29,7 +29,7 @@ generateControllersForEntity erdname allEntities
   CurryProg
    (controllerModuleName ename)
    -- imports:
-   [ "Global", "Maybe", "Time"
+   [ timeModule
    , "HTML.Base", "HTML.Session", "HTML.WUI"
    , erdname
    , "Config.EntityRoutes", "Config.UserProcesses"
@@ -160,7 +160,7 @@ newController erdname (Entity entityName attrList) relationships allEntities =
          ) ++
          (if withCTime
           then [CSPat (CPVar ctimevar)
-                      (constF ("Time","getClockTime"))]
+                      (constF (timeModule,"getClockTime"))]
           else []) ++
          [CSExpr setParCall,         
           CSExpr $ applyF (pre "return")
@@ -256,15 +256,12 @@ newStore _ entity@(Entity entityName _) relationships allEntities =
   cmtfunc "The data stored for executing the \"new entity\" WUI form."
     (controllerStoreName entityName "new") 0
     Private
-    (emptyClassType $ applyTC (globalModule "Global")
-      [applyTC (sessionModule "SessionStore")
-        [newTupleType entity relationships allEntities]])
+    (emptyClassType $
+       applyTC (sessionModule "SessionStore")
+         [newTupleType entity relationships allEntities])
     [simpleRule []
-      (applyF (globalModule "global")
-        [constF (sessionModule "emptySessionStore"),
-         applyF (globalModule "Persistent")
-          [applyF (sessionModule "inSessionDataDir")
-            [string2ac $ "new" ++ entityName ++ "Store"]]])]
+      (applyF (sessionModule "sessionStore")
+              [string2ac $ "new" ++ entityName ++ "Store"])]
 
 
 --- Computes the tuple type of the data to be stored and manipulated
@@ -299,7 +296,7 @@ createTransaction erdname (Entity entityName attrList)
                    map (\e -> (lowerFirst e) ++ "s") manyToManyEntities)
                    [1..]))
       ] -- parameter list for controller
-      (applyF (dbconn ">+=")
+      (applyF (pre ">>=")
          [applyF (entityConstructorFunction erdname (Entity entityName attrList) relationships) 
                      (map (\ ((Attribute name dom key null), varId) -> 
                         if (isForeignKey (Attribute name dom key null))
@@ -313,7 +310,7 @@ createTransaction erdname (Entity entityName attrList)
                         (zip noPKeys [1..])
                       ),
           CLambda [cpvar "newentity"]
-           (foldr1 (\a b -> applyF (dbconn ">+") [a,b])
+           (foldr1 (\a b -> applyF (pre ">>") [a,b])
             (map (\name -> applyF (controllerModuleName entityName,
                                    "add"++(linkTableName entityName name allEntities))
                                   [cvar (lowerFirst name ++ "s"),
@@ -482,15 +479,12 @@ editStore erdname entity@(Entity entityName _) relationships allEntities =
   cmtfunc "The data stored for executing the edit WUI form."
     (controllerStoreName entityName "edit") 0
     Private
-    (emptyClassType $ applyTC (globalModule "Global")
-      [applyTC (sessionModule "SessionStore")
-        [editTupleType erdname entity relationships allEntities]])
+    (emptyClassType $
+       applyTC (sessionModule "SessionStore")
+         [editTupleType erdname entity relationships allEntities])
     [simpleRule []
-      (applyF (globalModule "global")
-        [constF (sessionModule "emptySessionStore"),
-         applyF (globalModule "Persistent")
-          [applyF (sessionModule "inSessionDataDir")
-            [string2ac $ "edit" ++ entityName ++ "Store"]]])]
+      (applyF (sessionModule "sessionStore")
+              [string2ac $ "edit" ++ entityName ++ "Store"])]
 
 --- Computes the tuple type of the data to be stored and manipulated
 --- by the WUI to edit a new entity.
@@ -520,7 +514,7 @@ updateTransaction erdname (Entity entityName attrList) _ allEntities =
     2 Private
     (tupleType ([baseType (erdname, entityName)] ++
                  map (\name -> listType (ctvar name)) manyToManyEntities)
-      ~> applyTC (dbconn "DBAction") [baseType (pre "()")])
+      ~> applyTC (dbconn "DBAction") [unitType])
     [simpleRule 
       [tuplePattern
              ([CPVar (0, lowerFirst entityName)] ++
@@ -530,11 +524,11 @@ updateTransaction erdname (Entity entityName attrList) _ allEntities =
                              manyToManyEntities)
                         [1..])))
       ] -- parameter list for controller
-      (foldr1 (\a b -> applyF (dbconn ">+") [a,b])
+      (foldr1 (\a b -> applyF (pre ">>") [a,b])
                 ([applyF (erdname, "update"++entityName)
                          [cvar (lowerFirst entityName)]] ++ 
                  (map  (\name -> 
-                          applyF (dbconn ">+=") [
+                          applyF (pre ">>=") [
                             applyF (controllerModuleName entityName,"get"++entityName++name++"s") [cvar (lowerFirst entityName)],
                             CLambda [CPVar(0, "old"++(linkTableName entityName name allEntities)++name++"s")] (applyF (controllerModuleName entityName, "remove"++(linkTableName entityName name allEntities)) [cvar ("old"++(linkTableName entityName name allEntities)++name++"s"), cvar (lowerFirst entityName)])
                           ]
@@ -610,23 +604,22 @@ deleteTransaction erdname (Entity entityName attrList) _ allEntities =
       entvar = (0, entlc)             -- entity parameter for trans.
   in
    stCmtFunc
-    ("Transaction to delete a given "++entityName++" entity.")
+    ("Transaction to delete a given " ++ entityName ++ " entity.")
     (transFunctionName entityName "delete")
     1 Private
-    (baseType (erdname, entityName) ~>
-                     applyTC (dbconn "DBAction") [baseType (pre "()")])
+    (baseType (erdname, entityName) ~> applyTC (dbconn "DBAction") [unitType])
     [simpleRule 
       [CPVar entvar] -- entity parameter for controller
-      (foldr1 (\a b -> applyF (dbconn ">+") [a,b])
+      (foldr1 (\a b -> applyF (pre ">>") [a,b])
            (map (\name ->
-                  applyF (dbconn ">+=")
+                  applyF (pre ">>=")
                          [applyF (controllerModuleName entityName,
-                                  "get"++entityName++name++"s")
+                                  "get" ++ entityName ++ name ++ "s")
                                  [CVar entvar],
-                          CLambda [CPVar(0, "old"++(linkTableName entityName name allEntities)++name++"s")]
+                          CLambda [CPVar(0, "old" ++ (linkTableName entityName name allEntities) ++ name ++ "s")]
                             (applyF (controllerModuleName entityName,
-                                     "remove"++(linkTableName entityName name allEntities))
-                                    [cvar ("old"++(linkTableName entityName name allEntities)++name++"s"),
+                                     "remove" ++ (linkTableName entityName name allEntities))
+                                    [cvar ("old" ++ (linkTableName entityName name allEntities) ++ name ++ "s"),
                                      CVar entvar ])
                         ]
                  )
@@ -637,20 +630,20 @@ deleteTransaction erdname (Entity entityName attrList) _ allEntities =
 listController :: ControllerGenerator
 listController erdname (Entity entityName _) _ _ =
   controllerFunction
-    ("Lists all "++entityName++" entities with buttons to show, delete,\n"++
+    ("Lists all " ++ entityName ++ " entities with buttons to show, delete,\n"++
      "or edit an entity.")
     entityName "list" 0
     controllerType
     [simpleRule [] -- no arguments
       (applyF (pre "$")
           [applyF checkAuthorizationFunc
-            [applyF (enauthModName,lowerFirst entityName++"OperationAllowed")
+            [applyF (enauthModName,lowerFirst entityName ++ "OperationAllowed")
               [applyF (authorizationModule,"ListEntities") []]],
            CLambda [CPVar infovar] $
             CDoExpr (            
             [CSPat (CPVar entsvar)
                    (applyF (erdname,"runQ")
-                           [constF (erdname,"queryAll"++entityName++"s")]),
+                           [constF (erdname,"queryAll" ++ entityName ++ "s")]),
              CSExpr (applyF (pre "return")
                            [applyF (viewFunctionName entityName "list")
                                    [CVar infovar, CVar entsvar]])
@@ -660,7 +653,7 @@ listController erdname (Entity entityName _) _ _ =
         )]
  where
   infovar = (0, "sinfo")
-  entsvar = (1, (lowerFirst entityName)++"s")
+  entsvar = (1, (lowerFirst entityName) ++ "s")
 
 ------------------------------------------------------------------------------
 showController :: ControllerGenerator
@@ -671,14 +664,14 @@ showController erdname (Entity entityName attrList) relationships allEntities =
       infovar            = (1, "sinfo")
   in
     controllerFunction
-    ("Shows a "++entityName++" entity.")
+    ("Shows a " ++ entityName ++ " entity.")
     entityName "show" 1
       (baseType (erdname,entityName) ~> controllerType)
       [simpleRule 
         [CPVar pvar] -- parameterlist for controller
         (applyF (pre "$")
             [applyF checkAuthorizationFunc
-              [applyF (enauthModName,lowerFirst entityName++"OperationAllowed")
+              [applyF (enauthModName,lowerFirst entityName ++ "OperationAllowed")
                 [applyF (authorizationModule,"ShowEntity") [CVar pvar]]],
              CLambda [CPVar infovar] $
               CDoExpr (
@@ -690,7 +683,7 @@ showController erdname (Entity entityName attrList) relationships allEntities =
                               [applyF (controllerModuleName entityName,
                                        "get"++ fst (relationshipName
                                                 entityName ename relationships)
-                                            ++ename)
+                                            ++ ename)
                                       [CVar pvar]
                               ])
                    )
@@ -699,10 +692,10 @@ showController erdname (Entity entityName attrList) relationships allEntities =
               (map (\ (ename, num) ->
                       CSPat (CPVar (num,lowerFirst (linkTableName entityName
                                                            ename allEntities)
-                                        ++ename++"s"))
+                                        ++ename ++ "s"))
                             (applyF (erdname,"runJustT")
                                [applyF (controllerModuleName entityName,
-                                        "get"++entityName++ename++"s")
+                                        "get" ++ entityName ++ ename ++ "s")
                                        [CVar pvar]])
                    )
                    (zip (manyToManyEntities) [1..])
@@ -719,7 +712,7 @@ showController erdname (Entity entityName attrList) relationships allEntities =
                         (map (\ (ename, num) ->
                                CVar (num,lowerFirst (linkTableName entityName
                                                        ename allEntities)
-                                         ++ename++"s"))
+                                         ++ename ++ "s"))
                              (zip (manyToManyEntities) [1..])))
                     ])
               ])
@@ -736,20 +729,20 @@ manyToManyAddOrRemove erdname (Entity entityName _) entities allEntities =
     addOrRemoveFunction funcPrefix dbFuncPrefix e1 e2 =      
       stCmtFunc 
       (if (funcPrefix == "add")
-        then ("Associates given entities with the "++entityName++" entity.")
-        else ("Removes association to the given entities with the "++entityName++" entity."))
-      (controllerModuleName e1, funcPrefix++(linkTableName e1 e2 allEntities))
+        then ("Associates given entities with the " ++ entityName ++ " entity.")
+        else ("Removes association to the given entities with the " ++ entityName ++ " entity."))
+      (controllerModuleName e1, funcPrefix ++ (linkTableName e1 e2 allEntities))
       2 
       Private
       (listType (ctvar e2) ~> ctvar e1 ~> applyTC (dbconn "DBAction")
                                                  [tupleType []])
-      [simpleRule [CPVar (0, (lowerFirst e2)++"s"), CPVar (1, (lowerFirst e1))]
+      [simpleRule [CPVar (0, (lowerFirst e2) ++ "s"), CPVar (1, (lowerFirst e1))]
         (applyF (pre "mapM_")
            [CLambda [CPVar(2, "t")]
-             (applyF (erdname, dbFuncPrefix++(linkTableName e1 e2 allEntities))
-               [applyF (erdname, (lowerFirst e1)++"Key") [cvar (lowerFirst e1)],
-                applyF (erdname, (lowerFirst e2)++"Key") [cvar "t"]]),
-            cvar ((lowerFirst e2)++"s")])]
+             (applyF (erdname, dbFuncPrefix ++ (linkTableName e1 e2 allEntities))
+               [applyF (erdname, (lowerFirst e1) ++ "Key") [cvar (lowerFirst e1)],
+                applyF (erdname, (lowerFirst e2) ++ "Key") [cvar "t"]]),
+            cvar ((lowerFirst e2) ++ "s")])]
 
 getAll :: String -> Entity -> [String] -> [Entity] -> [CFuncDecl]
 getAll erdname (Entity entityName _) entities _ =
@@ -758,8 +751,8 @@ getAll erdname (Entity entityName _) entities _ =
     getAllFunction :: String -> CFuncDecl
     getAllFunction foreignEntity =
       stCmtFunc 
-      ("Gets all "++foreignEntity++" entities.")
-      (controllerModuleName entityName, "getAll"++foreignEntity++"s")
+      ("Gets all " ++ foreignEntity ++ " entities.")
+      (controllerModuleName entityName, "getAll" ++ foreignEntity ++ "s")
       0
       Private
       (ioType (listType (ctvar foreignEntity)))
@@ -783,23 +776,23 @@ manyToManyGetRelated erdname (Entity entityName _) entities allEntities =
     getRelatedFunction :: String -> CFuncDecl
     getRelatedFunction foreignEntity =
       stCmtFunc 
-      ("Gets the associated "++foreignEntity++" entities for a given "++entityName++" entity.")
-      (controllerModuleName entityName, "get"++(linkTableName entityName foreignEntity allEntities)++foreignEntity++"s")
+      ("Gets the associated " ++ foreignEntity ++ " entities for a given " ++ entityName ++ " entity.")
+      (controllerModuleName entityName, "get" ++ (linkTableName entityName foreignEntity allEntities) ++ foreignEntity ++ "s")
       0
       Private
       (ctvar entityName ~> applyTC (dbconn "DBAction")
                                    [listType (ctvar foreignEntity)])
-      [simpleRule [CPVar (1, (take 1 $ lowerFirst entityName)++foreignEntity)]
+      [simpleRule [CPVar (1, (take 1 $ lowerFirst entityName) ++ foreignEntity)]
         (applyF (erdname,"queryAll")
           [CLambda [CPVar(0, take 1 (lowerFirst foreignEntity) )] 
             (CLetDecl
-               [CLocalVars [(1,(take 1 $ lowerFirst entityName)++"key"),
-                            (2,(take 1 $ lowerFirst foreignEntity)++"key")]]
+               [CLocalVars [(1,(take 1 $ lowerFirst entityName) ++ "key"),
+                            (2,(take 1 $ lowerFirst foreignEntity) ++ "key")]]
                (foldr (\a b -> applyF ("Dynamic", "<>") [a,b]) 
-                 (applyF (erdname, lowerFirst (linkTableName entityName foreignEntity allEntities)) [cvar ((take 1 $ lowerFirst entityName)++"key"), cvar ((take 1 $ lowerFirst foreignEntity)++"key")])
+                 (applyF (erdname, lowerFirst (linkTableName entityName foreignEntity allEntities)) [cvar ((take 1 $ lowerFirst entityName) ++ "key"), cvar ((take 1 $ lowerFirst foreignEntity) ++ "key")])
                  [
-                 (applyF (erdname, lowerFirst entityName) [cvar $ (take 1 $ lowerFirst entityName)++"key", cvar ((take 1 $ lowerFirst entityName)++foreignEntity)]),
-                 (applyF (erdname, lowerFirst foreignEntity) [cvar $ (take 1 $ lowerFirst foreignEntity)++"key", cvar (take 1 (lowerFirst foreignEntity))])
+                 (applyF (erdname, lowerFirst entityName) [cvar $ (take 1 $ lowerFirst entityName) ++ "key", cvar ((take 1 $ lowerFirst entityName) ++ foreignEntity)]),
+                 (applyF (erdname, lowerFirst foreignEntity) [cvar $ (take 1 $ lowerFirst foreignEntity) ++ "key", cvar (take 1 (lowerFirst foreignEntity))])
                  ]
                )
             )
@@ -814,20 +807,20 @@ manyToOneGetRelated erdname (Entity entityName _) entities _ relationships =
   where
     getRelatedFunction :: String -> CFuncDecl
     getRelatedFunction foreignEntity =
-      let argvar  = (1, (take 1 $ lowerFirst entityName)++foreignEntity)
+      let argvar  = (1, (take 1 $ lowerFirst entityName) ++ foreignEntity)
           rname   = fst (relationshipName entityName foreignEntity relationships)
-          fkeysel = lowerFirst entityName++foreignEntity++rname++"Key"
+          fkeysel = lowerFirst entityName ++ foreignEntity ++ rname ++ "Key"
       in
       stCmtFunc 
-      ("Gets the associated "++foreignEntity++" entity for a given "++
-       entityName++" entity.")
+      ("Gets the associated " ++ foreignEntity ++ " entity for a given "++
+       entityName ++ " entity.")
       (controllerModuleName entityName,
-       "get"++rname++foreignEntity)
+       "get" ++ rname ++ foreignEntity)
       0
       Private
       ((ctvar entityName) ~> applyTC (dbconn "DBAction") [ctvar foreignEntity])
       [simpleRule [CPVar argvar]
-                  (applyF (erdname,"get"++foreignEntity)
+                  (applyF (erdname,"get" ++ foreignEntity)
                           [applyF (erdname,fkeysel) [CVar argvar]])]
 
 relationshipName :: String -> String -> [Relationship] -> (String, String)
@@ -891,9 +884,9 @@ newSuffix eName attrs rels =
               (map attributeName (filter isForeignKey attrs)) ++
     if (length (exactRs ++ maxRs ++ minMaxRs))==0
     then ""
-    else concatMap (\k->"With"++k++"Keys")
+    else concatMap (\k->"With" ++ k ++ "Keys")
                    (map (relatedRelation eName)
-                        (exactRs++maxRs++minMaxRs))
+                        (exactRs ++ maxRs ++ minMaxRs))
   where
     isExactB (Relationship _ [REnd _ _ _, REnd _ _ c]) =
       case c of Exactly i -> i>1

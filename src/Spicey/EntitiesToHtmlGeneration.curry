@@ -11,7 +11,7 @@ import Spicey.GenerationHelper
 generateToHtml :: String -> [Entity] -> [Relationship] -> CurryProg
 generateToHtml erdname allEntities relationships = simpleCurryProg
   (entitiesToHtmlModule erdname)
-  ["Time", "HTML.Base", "HTML.WUI", spiceyModule, erdname] -- imports
+  [timeModule, "HTML.Base", "HTML.WUI", spiceyModule, erdname] -- imports
   [] -- typedecls
   -- functions
   (

@@ -1,17 +1,19 @@
 {
     "name": "spicey",
-    "version": "3.4.0",
+    "version": "4.0.0",
     "author": "Michael Hanus <mh@informatik.uni-kiel.de>",
     "synopsis": "A web application framework for Curry",
     "category": [ "Web", "Database" ],
+    "license": "BSD-3-Clause",
+    "licenseFile": "LICENSE",
     "dependencies": {
-        "base"          : ">= 1.0.0, < 2.0.0",
-        "abstract-curry": ">= 2.0.0",
-        "ertools"       : ">= 2.0.0"
-    },
-    "compilerCompatibility": {
-        "pakcs": ">= 2.0.0, < 3.0.0",
-        "kics2": ">= 2.0.0, < 3.0.0"
+        "base"          : ">= 3.0.0, < 4.0.0",
+        "abstract-curry": ">= 3.0.0, < 4.0.0",
+        "directory"     : ">= 3.0.0, < 4.0.0",
+        "ertools"       : ">= 3.0.0, < 4.0.0",
+        "filepath"      : ">= 3.0.0, < 4.0.0",
+        "process"       : ">= 3.0.0, < 4.0.0",
+        "time"          : ">= 3.0.0, < 4.0.0"
     },
     "configModule": "Spicey.PackageConfig",
     "executable": {

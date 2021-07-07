@@ -14,8 +14,6 @@ module System.SessionInfo (
   getUserSessionInfo, updateUserSessionInfo
  ) where
 
-import Global
-
 import HTML.Base    ( fromFormReader )
 import HTML.Session
 
@@ -25,6 +23,7 @@ import HTML.Session
 --- The argument of the session data is `Nothing` if the user is not logged in.
 --- Otherwise, it is `Maybe ln` where `ln` is the login name of the user.
 data UserSessionInfo = SD (Maybe String)
+  deriving (Read,Show)
 
 --- The initial (empty) session data
 emptySessionInfo :: UserSessionInfo
@@ -40,9 +39,8 @@ setUserLoginOfSession login (SD _) = SD login
 
 --------------------------------------------------------------------------
 --- Definition of the session state to store the login name (as a string).
-userSessionInfo :: Global (SessionStore UserSessionInfo)
-userSessionInfo =
-  global emptySessionStore (Persistent (inSessionDataDir "userSessionInfo"))
+userSessionInfo :: SessionStore UserSessionInfo
+userSessionInfo = sessionStore "userSessionInfo"
 
 --- Gets the data of the current user session.
 getUserSessionInfo :: IO UserSessionInfo

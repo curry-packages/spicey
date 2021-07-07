@@ -1,8 +1,9 @@
 -- CurryCheck test for Spicey web application framework
 
-import Directory ( createDirectory, getCurrentDirectory, setCurrentDirectory )
-import FilePath  ( (</>) )
-import System    ( system )
+import System.Directory ( createDirectory, getCurrentDirectory
+                        , setCurrentDirectory )
+import System.FilePath  ( (</>) )
+import System.Process   ( system )
 import Test.Prop
 
 import Spicey.PackageConfig ( packagePath, packageExecutable )

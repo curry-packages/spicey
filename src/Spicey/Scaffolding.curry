@@ -4,14 +4,15 @@
 
 module Spicey.Scaffolding where
 
+import System.IO
+
 import AbstractCurry.Types
 import AbstractCurry.Build
-import AbstractCurry.Pretty hiding(showCProg)
+import AbstractCurry.Pretty hiding ( showCProg )
 import Database.ERD
-import Directory
-import FilePath ( (</>) )
-import IO
-import System(system)
+import System.Directory
+import System.FilePath ( (</>) )
+import System.Process  ( system )
 
 import ERD2Curry ( erd2cdbiWithDBandERD )
 import Database.ERD.Goodies

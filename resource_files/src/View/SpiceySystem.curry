@@ -37,7 +37,7 @@ loginView currlogin =
     let loginname = env loginfield
     -- In the real system, you should also verify a password here.
     if null loginname
-      then done
+      then return ()
       else do loginToSession loginname
               setPageMessage ("Logged in as: "++loginname)
     nextInProcessOr (redirectController "?") Nothing >>= getPage

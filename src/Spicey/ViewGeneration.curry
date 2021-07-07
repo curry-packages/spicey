@@ -16,7 +16,7 @@ generateViewsForEntity erdname allEntities
      noPKeyAttrs = filter notPKey attrlist
   in simpleCurryProg
   (viewModuleName ename)
-  [ "Sort", "Time"
+  [ listModule, timeModule
   , "HTML.Base", bootstrapModule, "HTML.WUI"
   , erdname
   , "Config.EntityRoutes"
@@ -335,7 +335,7 @@ listView erdname (Entity entityName attrlist) _ _ =
                   ],
                   applyF (pre "map") [
                     constF (viewModuleName entityName,"list"++entityName),
-                    applyF ("Sort","mergeSortBy") [
+                    applyF (listModule,"sortBy") [
                         constF (viewModuleName entityName,"leq"++entityName),
                         CVar entsvar
                     ]

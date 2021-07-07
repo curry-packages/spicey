@@ -33,6 +33,7 @@ type ControllerResult = String
 
 -- Node ids for the processes:
 data Node = NewEntry | NewComment | EndCmt | NewTag | EndTag
+  deriving (Read,Show)
 
 availableProcesses :: Processes Node
 availableProcesses = ProcSpec [] failed failed -- default declaration

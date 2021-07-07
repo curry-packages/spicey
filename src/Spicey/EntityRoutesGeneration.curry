@@ -2,7 +2,7 @@
 
 module Spicey.EntityRoutesGeneration where
 
-import Char(toLower)
+import Data.Char ( toLower )
 
 import AbstractCurry.Types
 import AbstractCurry.Build

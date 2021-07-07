@@ -24,11 +24,10 @@ module System.Spicey (
   saveLastUrl, getLastUrl, getLastUrls
   ) where
 
-import Char         ( isSpace, isDigit )
-import FilePath     ( (</>) )
-import Global
-import ReadShowTerm ( readsQTerm )
-import Time
+import Data.Char        ( isSpace, isDigit )
+
+import Data.Time
+import System.FilePath     ( (</>) )
 
 import Database.CDBI.Connection ( SQLResult )
 import HTML.Base
@@ -243,9 +242,9 @@ wFloat = transformWSpec (readFloat, show)
 readMaybeFloat :: String -> Maybe Float
 readMaybeFloat s =
   if all isFloatChar s
-   then case readsQTerm s of
+   then case reads s of
           [(x,tail)] -> if all isSpace tail then Just x else Nothing
-          _  ->  Nothing
+          _          ->  Nothing
    else Nothing
  where
    isFloatChar c = isDigit c || c == '.'
@@ -320,14 +319,14 @@ jsIncludes =
 cancelOperation :: IO ()
 cancelOperation = do
   inproc <- isInProcess
-  if inproc then removeCurrentProcess else done
+  if inproc then removeCurrentProcess else return ()
   setPageMessage $ (if inproc then "Process" else "Operation") ++ " cancelled"
 
 -- dummy-controller to display an error
 displayError :: String -> Controller
 displayError msg = do
   inproc <- isInProcess
-  if inproc then removeCurrentProcess else done
+  if inproc then removeCurrentProcess else return ()
   setPageMessage ("Error occurred!" ++
                   if inproc then " Process terminated!" else "")
   if null msg
@@ -393,13 +392,12 @@ spTable items = table items  `addClass` "table table-hover table-condensed"
 
 --------------------------------------------------------------------------
 -- The page messages are implemented by a session store.
--- We define a global variable to store a message which is shown
+-- This store contains a message which is shown
 -- in the next HTML page of a session.
 
 --- Definition of the session state to store the page message (a string).
-pageMessage :: Global (SessionStore String)
-pageMessage =
-  global emptySessionStore (Persistent (inSessionDataDir "pageMessage"))
+pageMessage :: SessionStore String
+pageMessage = sessionStore "pageMessage"
 
 --- Gets the page message and delete it.
 getPageMessage :: IO String
@@ -410,15 +408,15 @@ getPageMessage = do
 
 --- Set the page message of the current session.
 setPageMessage :: String -> IO ()
-setPageMessage msg = writeSessionData pageMessage msg
+setPageMessage msg = putSessionData pageMessage msg
 
 --------------------------------------------------------------------------
 -- Another example for using sessions.
 -- We store the list of selected URLs into  the current session.
 
 --- Definition of the session state to store the last URL (as a string).
-lastUrls :: Global (SessionStore [String])
-lastUrls = global emptySessionStore (Persistent (inSessionDataDir "lastUrls"))
+lastUrls :: SessionStore [String]
+lastUrls = sessionStore "lastUrls"
 
 --- Gets the list of URLs of the current session.
 getLastUrls :: IO [String]
@@ -433,6 +431,6 @@ getLastUrl = do urls <- getLastUrls
 saveLastUrl :: String -> IO ()
 saveLastUrl url = do
   urls <- getLastUrls
-  writeSessionData lastUrls (url:urls)
+  putSessionData lastUrls (url:urls)
 
 --------------------------------------------------------------------------
