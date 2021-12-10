@@ -4,11 +4,11 @@ module Spicey.SpiceUp where
 
 import Control.Monad        ( unless, when )
 import Curry.Compiler.Distribution ( installDir )
-import Data.List            ( isSuffixOf, last )
+import Data.List            ( isSuffixOf )
 import System.Environment   ( getArgs, setEnv )
 
-import Database.ERD         ( ERD(..), Entity(..), readERDTermFile )
-import Database.ERD.Goodies ( erdName, storeERDFromProgram )
+import Database.ERD         ( ERD(..), Entity(..) )
+import Database.ERD.Goodies ( erdName, readERDFromProgram )
 import System.Directory
 import System.FilePath      ( (</>), takeFileName )
 import System.Process       ( exitWith, system )
@@ -19,17 +19,18 @@ import Spicey.Scaffolding
 systemBanner :: String
 systemBanner =
   let bannerText = "Spicey Web Framework (Version " ++ packageVersion ++
-                   " of 12/10/21)"
+                   " of 10/12/21)"
       bannerLine = take (length bannerText) (repeat '-')
    in bannerLine ++ "\n" ++ bannerText ++ "\n" ++ bannerLine
 
 data FileMode = Exec | NoExec
- deriving Eq
 
 setFileMode :: FileMode -> String -> IO ()
-setFileMode fmode filename =
-  if fmode==Exec then system ("chmod +x \"" ++ filename ++ "\"") >> return ()
-                 else return ()
+setFileMode NoExec filename = return ()
+setFileMode Exec   filename = do
+  system $ "chmod +x \"" ++ filename ++ "\""
+  return ()
+
 
 data DirTree =
    Directory String [DirTree]   -- a directory to be created
@@ -103,7 +104,7 @@ spiceyStructure pkgname =
 -- every occurrince of `XXXICONTROLLERXXX` by
 -- `-i <controllermod1> ... -i <controllermodn>`.
 patchMakeFile :: ERD -> String -> String
-patchMakeFile _ [] = []
+patchMakeFile _                      []     = []
 patchMakeFile erd@(ERD _ entities _) (c:cs)
   | c=='X' && take 14 cs == "XXCURRYHOMEXXX"
   = installDir ++ patchMakeFile erd (drop 14 cs)
@@ -115,7 +116,7 @@ patchMakeFile erd@(ERD _ entities _) (c:cs)
 
 -- Replace every occurrence of "XXXPKGNAMEXXX" by first argument
 replacePackageName :: String -> ERD -> String -> String
-replacePackageName _ _ [] = []
+replacePackageName _  _   []     = []
 replacePackageName pn erd (c:cs)
   | c=='X' && take 12 cs == "XXPKGNAMEXXX"
     = pn ++ replacePackageName pn erd (drop 12 cs)
@@ -153,17 +154,17 @@ createStructure target_path resource_dir erd _ _
     writeFile outfile (patchfun erd cnt)
     setFileMode fmode outfile
 
-createStructure target_path resource_dir erd termfile db_path
+createStructure target_path resource_dir erd erprogpath db_path
                 (Directory dirname subtree) = do
   let full_path = target_path </> dirname
   ifNotExistsDo full_path $ do
     putStrLn $ "Creating directory '"++full_path++"'..."
     createDirectory full_path
-  mapM_ (createStructure full_path resource_dir erd termfile db_path) subtree
+  mapM_ (createStructure full_path resource_dir erd erprogpath db_path) subtree
 
-createStructure target_path _ erd termfile db_path
+createStructure target_path _ erd erprogpath db_path
                 (GeneratedFromERD generatorFunction) =
-  generatorFunction termfile erd target_path db_path
+  generatorFunction erprogpath erd target_path db_path
 
 --- The main operation to start the scaffolding.
 main :: IO ()
@@ -181,25 +182,22 @@ main = do
   createStructureWith orgfile dbfile = do
     -- set CURRYPATH in order to compile ERD model (which requires Database.ERD)
     unless (null packageLoadPath) $ setEnv "CURRYPATH" packageLoadPath
-    -- The directory containing the project generator:
+    -- The directory containing the resource files of the project generator:
     let resourcedir = packagePath </> "resource_files"
     exfile <- doesFileExist orgfile
-    unless exfile $ error ("File `" ++ orgfile ++ "' does not exist!")
-    termfile <- if ".curry" `isSuffixOf` orgfile ||
-                   ".lcurry" `isSuffixOf` orgfile
-                  then storeERDFromProgram orgfile
-                  else return orgfile
-    erd <- readERDTermFile termfile
+    unless exfile $ error ("File '" ++ orgfile ++ "' does not exist!")
+    unless (".curry"  `isSuffixOf` orgfile ||
+            ".lcurry" `isSuffixOf` orgfile) $ do
+       putStrLn $ "ERROR: '" ++ orgfile ++ "' is not a Curry program file!"
+       exitWith 1
+    erd <- readERDFromProgram orgfile
     let pkgname = erdName erd
     createDirectoryIfMissing True pkgname
-    createStructure pkgname resourcedir erd termfile dbfile
+    createStructure pkgname resourcedir erd orgfile dbfile
                     (spiceyStructure pkgname)
-    when (orgfile /= termfile) $ do
-      -- delete generated ERD term file:
-      removeFile termfile
-      -- save original ERD specification in src/Model directory:
-      copyFile orgfile
-               (pkgname </> "src" </> "Model" </> erdName erd ++ "_ERD.curry")
+    -- save original ERD specification in src/Model directory:
+    copyFile orgfile
+             (pkgname </> "src" </> "Model" </> erdName erd ++ "_ERD.curry")
     putStrLn (helpText pkgname)
 
   helpText pkgname = unlines $
@@ -227,3 +225,5 @@ spiceupHelp ecode = putStrLn helpText >> exitWith ecode
    , "--db <db file>    : name of the SQLite3 database file (default: <ERD name>.db)"
    , "<ERD program file>: name of Curry program file containing ERD definition"
    ]
+
+------------------------------------------------------------------------

@@ -14,7 +14,7 @@ import System.Directory
 import System.FilePath ( (</>) )
 import System.Process  ( system )
 
-import ERD2Curry ( erd2cdbiWithDBandERD )
+import ERD2Curry ( erd2CDBI )
 import Database.ERD.Goodies
 
 import Spicey.ControllerGeneration
@@ -97,13 +97,13 @@ createHtmlHelpers _ (ERD name entities relationship) path _ =
 
 -- Uses Curry package `ertools` for ERD to Curry transformation
 createModels :: String -> ERD -> String -> String -> IO ()
-createModels termpath erd path dbpath = do
+createModels erprogpath erd path dbpath = do
   let erdname = erdName erd
       dbfile = if null dbpath then erdname ++ ".db"
                               else dbpath
   curdir <- getCurrentDirectory
   setCurrentDirectory path
-  erd2cdbiWithDBandERD dbfile termpath
+  erd2CDBI dbfile erprogpath erd
   setCurrentDirectory curdir
 
 createRoutes :: String -> ERD -> String -> String -> IO ()
