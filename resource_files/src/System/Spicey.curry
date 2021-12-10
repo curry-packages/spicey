@@ -265,7 +265,7 @@ spiceyFooter :: [BaseHtml]
 spiceyFooter =
   [par [htxt "powered by",
         href "http://www.informatik.uni-kiel.de/~pakcs/spicey"
-             [image "images/spicey-logo.png" "Spicey"]
+             [image "bt4/img/spicey-logo.png" "Spicey"]
           `addAttr` ("target","_blank"),
         htxt "Framework"]]
 
