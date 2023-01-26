@@ -11,7 +11,7 @@ module System.Processes
 import Data.Maybe
 import ReadShowTerm
 
-import Control.AllSolutions ( getOneValue )
+import Control.AllValues ( getOneValue )
 import HTML.Base
 import HTML.Session
 
