@@ -1,4 +1,6 @@
--- Main module to generate the initial Spicey application
+------------------------------------------------------------------------------
+--- Main module to generate the initial Spicey application
+------------------------------------------------------------------------------
 
 module Spicey.SpiceUp where
 
@@ -19,7 +21,7 @@ import Spicey.Scaffolding
 systemBanner :: String
 systemBanner =
   let bannerText = "Spicey Web Framework (Version " ++ packageVersion ++
-                   " of 10/12/21)"
+                   " of 06/02/23)"
       bannerLine = take (length bannerText) (repeat '-')
    in bannerLine ++ "\n" ++ bannerText ++ "\n" ++ bannerLine
 
@@ -44,7 +46,7 @@ data DirTree =
 spiceyStructure :: String -> DirTree
 spiceyStructure pkgname = 
   Directory "." [
-    ResourceFile NoExec "README.txt",
+    ResourceFile NoExec "README.md",
     ResourcePatchFile NoExec "package.json" (replacePackageName pkgname),
     ResourcePatchFile NoExec "Makefile" patchMakeFile,
     Directory "src" [
@@ -205,7 +207,7 @@ main = do
     , "Source files for the application generated as Curry package '" ++
       pkgname ++ "'."
     , ""
-    , "Please go into the package directory where the 'README.txt' file"
+    , "Please go into the package directory where the 'README.md' file"
     , "contains some hints how to install the generated application."
     , ""
     , "IMPORTANT NOTE:"

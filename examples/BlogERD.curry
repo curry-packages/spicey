@@ -1,3 +1,10 @@
+-- A specification of entity-relationship model for a simple Blog.
+--
+-- In order to generate a complete web application for this Blog
+-- with the web framework Spicey, execute the following command:
+--
+--     > spiceup BlogERD.curry
+
 import Database.ERD
 
 blogERD :: ERD
