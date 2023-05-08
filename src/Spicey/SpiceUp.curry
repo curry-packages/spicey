@@ -21,7 +21,7 @@ import Spicey.Scaffolding
 systemBanner :: String
 systemBanner =
   let bannerText = "Spicey Web Framework (Version " ++ packageVersion ++
-                   " of 06/02/23)"
+                   " of 08/05/23)"
       bannerLine = take (length bannerText) (repeat '-')
    in bannerLine ++ "\n" ++ bannerText ++ "\n" ++ bannerLine
 
@@ -160,7 +160,7 @@ createStructure target_path resource_dir erd erprogpath db_path
                 (Directory dirname subtree) = do
   let full_path = target_path </> dirname
   ifNotExistsDo full_path $ do
-    putStrLn $ "Creating directory '"++full_path++"'..."
+    putStrLn $ "Creating directory '" ++ full_path ++ "'..."
     createDirectory full_path
   mapM_ (createStructure full_path resource_dir erd erprogpath db_path) subtree
 
@@ -195,17 +195,23 @@ main = do
     erd <- readERDFromProgram orgfile
     let pkgname = erdName erd
     createDirectoryIfMissing True pkgname
-    createStructure pkgname resourcedir erd orgfile dbfile
+    dbpath <- getAbsolutePath $ if null dbfile then pkgname </> pkgname ++ ".db"
+                                               else dbfile
+    createStructure pkgname resourcedir erd orgfile dbpath
                     (spiceyStructure pkgname)
     -- save original ERD specification in src/Model directory:
     copyFile orgfile
              (pkgname </> "src" </> "Model" </> erdName erd ++ "_ERD.curry")
-    putStrLn (helpText pkgname)
+    putStrLn (helpText pkgname dbpath)
 
-  helpText pkgname = unlines $
+  helpText pkgname dbpath = unlines $
     [ take 70 (repeat '-')
     , "Source files for the application generated as Curry package '" ++
       pkgname ++ "'."
+    , ""
+    , "The database is stored in: " ++ dbpath
+    , "If you want to store it at another place, move this file and change"
+    , "the definition of 'sqliteDBFile' in 'src/Model/" ++ pkgname ++ ".curry'."
     , ""
     , "Please go into the package directory where the 'README.md' file"
     , "contains some hints how to install the generated application."

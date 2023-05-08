@@ -71,8 +71,8 @@ createControllers _ (ERD name entities relationship) path _ = do
 
   saveController :: String -> [Entity] -> [Relationship] -> Entity -> IO ()
   saveController erdname allEntities relationships (Entity ename attrlist) = do
-    putStrLn ("Saving controllers in 'Controller."++ename++".curry'...")
-    writeFile (path </> ename++".curry")
+    putStrLn $ "Saving controllers in 'Controller." ++ ename ++ ".curry'..."
+    writeFile (path </> ename ++ ".curry")
               (showCProg (generateControllersForEntity erdname allEntities
                             (Entity ename attrlist) relationships))
 
@@ -97,10 +97,8 @@ createHtmlHelpers _ (ERD name entities relationship) path _ =
 
 -- Uses Curry package `ertools` for ERD to Curry transformation
 createModels :: String -> ERD -> String -> String -> IO ()
-createModels erprogpath erd path dbpath = do
+createModels erprogpath erd path dbfile = do
   let erdname = erdName erd
-      dbfile = if null dbpath then erdname ++ ".db"
-                              else dbpath
   curdir <- getCurrentDirectory
   setCurrentDirectory path
   erd2CDBI dbfile erprogpath erd
@@ -108,11 +106,11 @@ createModels erprogpath erd path dbpath = do
 
 createRoutes :: String -> ERD -> String -> String -> IO ()
 createRoutes _ erd path _ = do
-  putStrLn $ "Saving '"++mappingModuleName++".curry'..."
+  putStrLn $ "Saving '" ++ mappingModuleName++".curry'..."
   mmfileh <- openFile (path </> "ControllerMapping.curry") WriteMode
   hPutStr mmfileh (showCProg (generateRoutesForERD erd))
   hClose mmfileh  
-  putStrLn $ "Saving '"++dataModuleName++".curry'..."
+  putStrLn $ "Saving '" ++ dataModuleName++".curry'..."
   dmfileh <- openFile (path </> "RoutesData.curry") WriteMode
   hPutStr dmfileh (showCProg (generateStartpointDataForERD erd))
   hClose dmfileh
