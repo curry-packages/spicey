@@ -221,7 +221,8 @@ newForm erdname entity@(Entity entityName attrlist) relationships allEntities =
              (zip (manyToOneEntities ++ manyToManyEntities) [2..]) )
 
   storeFun =
-    let entvar = (1, "entity")
+    let entvar    = (1, "entity")
+        newentvar = (2, "newentity")
     in
     CLambda [CPVar (0,"_"), CPVar entvar]
       (applyF checkAuthorizationFunc
@@ -232,10 +233,14 @@ newForm erdname entity@(Entity entityName attrlist) relationships allEntities =
                [applyF (erdname,"runT")
                   [applyF (transFunctionName entityName "create")
                            [CVar entvar]],
-                applyF (spiceyModule,"nextInProcessOr")
-                  [applyF (spiceyModule,"redirectController")
-                          [string2ac listEntityURL],
-                   constF (pre "Nothing")]])])
+                CLambda [CPVar newentvar]
+                  (applyF (pre ">>")
+                     [applyF (spiceyModule,"setPageMessage")
+                             [string2ac $ "New " ++ entityName ++ " created"],
+                      applyF (spiceyModule,"nextInProcessOr")
+                        [applyF (spiceyModule,"redirectController")
+                           [applyF (spiceyModule,"showRoute") [CVar newentvar]],
+                         constF (pre "Nothing")]])])])
 
   renderFun =
     CLambda [tuplePattern
@@ -288,7 +293,7 @@ createTransaction erdname (Entity entityName attrList)
   (transFunctionName entityName "create")
   1 Private
     (baseType (newEntityTypeName entityName)
-      ~> applyTC (dbconn "DBAction") [unitType])
+      ~> applyTC (dbconn "DBAction") [baseType (erdname,entityName)])
     [simpleRule 
       [tuplePattern
         (map (\ (param, varId) -> CPVar (varId, param)) 
@@ -297,18 +302,19 @@ createTransaction erdname (Entity entityName attrList)
                    [1..]))
       ] -- parameter list for controller
       (applyF (pre ">>=")
-         [applyF (entityConstructorFunction erdname (Entity entityName attrList) relationships) 
-                     (map (\ ((Attribute name dom key null), varId) -> 
-                        if (isForeignKey (Attribute name dom key null))
-                          then applyF (erdname, (lowerFirst (getReferencedEntityName dom))++"Key")
-                                      [CVar (varId, lowerFirst (getReferencedEntityName dom))]
-                          else let cv = CVar (varId, lowerFirst name)
-                                in if hasDefault dom && not (isStringDom dom)
-                                      && not null
+         [applyF (entityConstructorFunction erdname
+                    (Entity entityName attrList) relationships) 
+                    (map (\ ((Attribute name dom key null), varId) -> 
+                       if (isForeignKey (Attribute name dom key null))
+                         then applyF (erdname, (lowerFirst (getReferencedEntityName dom))++"Key")
+                                     [CVar (varId, lowerFirst (getReferencedEntityName dom))]
+                         else let cv = CVar (varId, lowerFirst name)
+                              in if hasDefault dom && not (isStringDom dom)
+                                    && not null
                                    then applyF (pre "Just") [cv]
                                    else cv)
-                        (zip noPKeys [1..])
-                      ),
+                       (zip noPKeys [1..])
+                    ),
           CLambda [cpvar "newentity"]
            (foldr1 (\a b -> applyF (pre ">>") [a,b])
             (map (\name -> applyF (controllerModuleName entityName,
@@ -316,7 +322,7 @@ createTransaction erdname (Entity entityName attrList)
                                   [cvar (lowerFirst name ++ "s"),
                                    cvar "newentity"])
                  manyToManyEntities ++
-             [applyF (pre "return") [constF (pre "()")]])
+             [applyF (pre "return") [cvar "newentity"]])
            )
          ]
          )]
@@ -448,17 +454,21 @@ editForm erdname entity@(Entity entityName attrlist) relationships allEntities =
                    map (\i -> CPVar (i+2,"_"))
                        [1 .. length manyToManyEntities]))]
       (applyF checkAuthorizationFunc
-         [applyF (enauthModName,lowerFirst entityName++"OperationAllowed")
+         [applyF (enauthModName,lowerFirst entityName ++ "OperationAllowed")
             [applyF (authorizationModule,"UpdateEntity") [CVar evar]],
           CLambda [CPVar (0,"_")]
             (applyF (spiceyModule,"transactionController")
                [applyF (erdname,"runT")
                   [applyF (transFunctionName entityName "update")
                            [CVar entvar]],
-                applyF (spiceyModule,"nextInProcessOr")
-                  [applyF (spiceyModule,"redirectController")
-                          [string2ac listEntityURL],
-                   constF (pre "Nothing")]])])
+                applyF (pre "const")
+                  [applyF (pre ">>")
+                     [applyF (spiceyModule,"setPageMessage")
+                             [string2ac $ entityName ++ " updated"],
+                      applyF (spiceyModule,"nextInProcessOr")
+                        [applyF (spiceyModule,"redirectController")
+                           [applyF (spiceyModule,"showRoute") [CVar evar]],
+                         constF (pre "Nothing")]]]])])
 
   renderFun =
     CLambda [tuplePattern
@@ -593,8 +603,12 @@ destroyController erdname (Entity entityName _) _ _ =
             [applyF (erdname,"runT")
                     [applyF (transFunctionName entityName "delete")
                             [CVar entvar]],
-             applyF (spiceyModule,"redirectController")
-                    [string2ac listEntityURL]]])]
+             applyF (pre "const")
+               [applyF (pre ">>")
+                     [applyF (spiceyModule,"setPageMessage")
+                             [string2ac $ entityName ++ " deleted"],
+                      applyF (spiceyModule,"redirectController")
+                             [string2ac listEntityURL]]]]])]
 
 --- Generates a transaction to delete an entity.
 deleteTransaction :: ControllerGenerator

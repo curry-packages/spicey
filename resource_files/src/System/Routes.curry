@@ -52,6 +52,6 @@ getRouteMenu = do
                         then getLinks restroutes
                         else [(hrefNav ("?" ++ string) [htxt name])] :
                              getLinks restroutes
-      Prefix s1 s2 -> [hrefNav ("?"++s1++"/"++s2) [htxt name]] :
+      Prefix s1 s2 -> [hrefNav ("?" ++ s1 ++ "/" ++ s2) [htxt name]] :
                       getLinks restroutes
       _ -> getLinks restroutes

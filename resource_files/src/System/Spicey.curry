@@ -123,17 +123,14 @@ confirmDeletionPage _ question = do
     _ -> displayUrlError
 
 
---- A controller to execute a transaction and proceed with a given
---- controller if the transaction succeeds. Otherwise, the
---- transaction error is shown.
+--- A controller to execute a transaction and proceed, if the transaction
+--- succeeds, with a given controller applied to the transaction result.
+--- Otherwise, the transaction error is shown.
 --- @param trans - the transaction to be executed
 --- @param controller - the controller executed in case of success
-transactionController :: IO (SQLResult _) -> Controller -> Controller
-transactionController trans controller = do
-  transResult <- trans
-  either (\error -> displayError (show error))
-         (\_     -> controller)
-         transResult
+transactionController :: IO (SQLResult a) -> (a -> Controller) -> Controller
+transactionController trans controller =
+  trans >>= either (\error -> displayError (show error)) controller
 
 --- If we are in a process, execute the next process depending on
 --- the provided information passed in the second argument,
