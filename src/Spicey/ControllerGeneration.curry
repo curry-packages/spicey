@@ -234,10 +234,10 @@ newForm erdname entity@(Entity entityName attrlist) relationships allEntities =
                   [applyF (transFunctionName entityName "create")
                            [CVar entvar]],
                 CLambda [CPVar newentvar]
-                  (applyF (pre ">>")
-                     [applyF (spiceyModule,"setPageMessage")
-                             [string2ac $ "New " ++ entityName ++ " created"],
-                      applyF (spiceyModule,"nextInProcessOr")
+                  (CDoExpr
+                     [CSExpr $ applyF (spiceyModule,"setPageMessage")
+                                [string2ac $ "New " ++ entityName ++ " created"],
+                      CSExpr $ applyF (spiceyModule,"nextInProcessOr")
                         [applyF (spiceyModule,"redirectController")
                            [applyF (spiceyModule,"showRoute") [CVar newentvar]],
                          constF (pre "Nothing")]])])])
@@ -294,38 +294,38 @@ createTransaction erdname (Entity entityName attrList)
   1 Private
     (baseType (newEntityTypeName entityName)
       ~> applyTC (dbconn "DBAction") [baseType (erdname,entityName)])
-    [simpleRule 
-      [tuplePattern
-        (map (\ (param, varId) -> CPVar (varId, param)) 
-             (zip (parameterList ++ map lowerFirst manyToOneEntities ++
-                   map (\e -> (lowerFirst e) ++ "s") manyToManyEntities)
-                   [1..]))
-      ] -- parameter list for controller
-      (applyF (pre ">>=")
-         [applyF (entityConstructorFunction erdname
-                    (Entity entityName attrList) relationships) 
-                    (map (\ ((Attribute name dom key null), varId) -> 
-                       if (isForeignKey (Attribute name dom key null))
-                         then applyF (erdname, (lowerFirst (getReferencedEntityName dom))++"Key")
-                                     [CVar (varId, lowerFirst (getReferencedEntityName dom))]
-                         else let cv = CVar (varId, lowerFirst name)
-                              in if hasDefault dom && not (isStringDom dom)
-                                    && not null
-                                   then applyF (pre "Just") [cv]
-                                   else cv)
-                       (zip noPKeys [1..])
-                    ),
-          CLambda [cpvar "newentity"]
-           (foldr1 (\a b -> applyF (pre ">>") [a,b])
-            (map (\name -> applyF (controllerModuleName entityName,
-                                   "add"++(linkTableName entityName name allEntities))
-                                  [cvar (lowerFirst name ++ "s"),
-                                   cvar "newentity"])
-                 manyToManyEntities ++
-             [applyF (pre "return") [cvar "newentity"]])
-           )
-         ]
-         )]
+  [simpleRule 
+    [tuplePattern
+      (map (\ (param, varId) -> CPVar (varId, param)) 
+           (zip (parameterList ++ map lowerFirst manyToOneEntities ++
+                 map (\e -> (lowerFirst e) ++ "s") manyToManyEntities)
+                 [1..]))
+    ] -- parameter list for controller
+    (CDoExpr $
+       CSPat (cpvar "newentity")
+         (applyF (entityConstructorFunction erdname
+                    (Entity entityName attrList) relationships)
+                 (map (\ ((Attribute name dom key null), varId) -> 
+                     if (isForeignKey (Attribute name dom key null))
+                       then applyF (erdname,
+                              lowerFirst (getReferencedEntityName dom) ++ "Key")
+                                   [CVar (varId,
+                                       lowerFirst (getReferencedEntityName dom))]
+                       else let cv = CVar (varId, lowerFirst name)
+                            in if hasDefault dom && not (isStringDom dom)
+                                  && not null
+                                 then applyF (pre "Just") [cv]
+                                 else cv)
+                     (zip noPKeys [1..])
+                  )) :
+       map (\name -> CSExpr $
+                       applyF (controllerModuleName entityName,
+                              "add" ++ linkTableName entityName name allEntities)
+                              [cvar (lowerFirst name ++ "s"),
+                               cvar "newentity"])
+           manyToManyEntities ++
+       [CSExpr $ applyF (pre "return") [cvar "newentity"]])
+  ]
  where
   noPKeys            = (filter notPKey attrList)
   -- foreignKeys = (filter isForeignKey attrList)
@@ -462,10 +462,10 @@ editForm erdname entity@(Entity entityName attrlist) relationships allEntities =
                   [applyF (transFunctionName entityName "update")
                            [CVar entvar]],
                 applyF (pre "const")
-                  [applyF (pre ">>")
-                     [applyF (spiceyModule,"setPageMessage")
-                             [string2ac $ entityName ++ " updated"],
-                      applyF (spiceyModule,"nextInProcessOr")
+                  [CDoExpr
+                     [CSExpr $ applyF (spiceyModule,"setPageMessage")
+                                      [string2ac $ entityName ++ " updated"],
+                      CSExpr $ applyF (spiceyModule,"nextInProcessOr")
                         [applyF (spiceyModule,"redirectController")
                            [applyF (spiceyModule,"showRoute") [CVar evar]],
                          constF (pre "Nothing")]]]])])
@@ -534,20 +534,27 @@ updateTransaction erdname (Entity entityName attrList) _ allEntities =
                              manyToManyEntities)
                         [1..])))
       ] -- parameter list for controller
-      (foldr1 (\a b -> applyF (pre ">>") [a,b])
-                ([applyF (erdname, "update"++entityName)
-                         [cvar (lowerFirst entityName)]] ++ 
-                 (map  (\name -> 
-                          applyF (pre ">>=") [
-                            applyF (controllerModuleName entityName,"get"++entityName++name++"s") [cvar (lowerFirst entityName)],
-                            CLambda [CPVar(0, "old"++(linkTableName entityName name allEntities)++name++"s")] (applyF (controllerModuleName entityName, "remove"++(linkTableName entityName name allEntities)) [cvar ("old"++(linkTableName entityName name allEntities)++name++"s"), cvar (lowerFirst entityName)])
-                          ]
-                        )
-                       manyToManyEntities
+      (CDoExpr $
+         (CSExpr (applyF (erdname, "update"++entityName)
+                         [cvar (lowerFirst entityName)]) :
+         (concatMap (\name ->
+            [CSPat (CPVar (0, "old" ++ linkTableName entityName name allEntities ++ name ++ "s"))
+                   (applyF (controllerModuleName entityName,
+                            "get" ++ entityName ++ name ++ "s")
+                           [cvar (lowerFirst entityName)]),
+             CSExpr (applyF (controllerModuleName entityName,
+                             "remove" ++ linkTableName entityName name allEntities)
+                            [cvar ("old"++ linkTableName entityName name allEntities ++ name ++ "s"),
+                             cvar (lowerFirst entityName)])])
+               manyToManyEntities
                       ) ++
-                      (map (\name -> applyF (controllerModuleName entityName, "add"++(linkTableName entityName name allEntities)) [cvar ((lowerFirst name)++"s"++(linkTableName entityName name allEntities)), cvar (lowerFirst entityName)]) manyToManyEntities)
-                    )
-        )]
+         (map (\name -> CSExpr $
+                  applyF (controllerModuleName entityName,
+                          "add" ++ linkTableName entityName name allEntities)
+                         [cvar (lowerFirst name ++ "s" ++ linkTableName entityName name allEntities),
+                          cvar (lowerFirst entityName)])
+              manyToManyEntities)
+         ))]
  where
   manyToManyEntities = manyToMany allEntities (Entity entityName attrList)
   -- manyToOneEntities = manyToOne (Entity entityName attrList) relationships
@@ -604,11 +611,11 @@ destroyController erdname (Entity entityName _) _ _ =
                     [applyF (transFunctionName entityName "delete")
                             [CVar entvar]],
              applyF (pre "const")
-               [applyF (pre ">>")
-                     [applyF (spiceyModule,"setPageMessage")
-                             [string2ac $ entityName ++ " deleted"],
-                      applyF (spiceyModule,"redirectController")
-                             [string2ac listEntityURL]]]]])]
+               [CDoExpr
+                  [CSExpr $ applyF (spiceyModule,"setPageMessage")
+                                   [string2ac $ entityName ++ " deleted"],
+                   CSExpr $ applyF (spiceyModule,"redirectController")
+                                   [string2ac listEntityURL]]]]])]
 
 --- Generates a transaction to delete an entity.
 deleteTransaction :: ControllerGenerator
@@ -624,21 +631,19 @@ deleteTransaction erdname (Entity entityName attrList) _ allEntities =
     (baseType (erdname, entityName) ~> applyTC (dbconn "DBAction") [unitType])
     [simpleRule 
       [CPVar entvar] -- entity parameter for controller
-      (foldr1 (\a b -> applyF (pre ">>") [a,b])
-           (map (\name ->
-                  applyF (pre ">>=")
-                         [applyF (controllerModuleName entityName,
-                                  "get" ++ entityName ++ name ++ "s")
-                                 [CVar entvar],
-                          CLambda [CPVar(0, "old" ++ (linkTableName entityName name allEntities) ++ name ++ "s")]
-                            (applyF (controllerModuleName entityName,
-                                     "remove" ++ (linkTableName entityName name allEntities))
-                                    [cvar ("old" ++ (linkTableName entityName name allEntities) ++ name ++ "s"),
-                                     CVar entvar ])
-                        ]
-                 )
-                 manyToManyEntities ++
-            [applyF (erdname, "delete" ++ entityName) [CVar entvar]]))]
+      (CDoExpr $
+         concatMap (\name ->
+           [CSPat (CPVar(0, "old" ++ (linkTableName entityName name allEntities) ++ name ++ "s"))
+                  (applyF (controllerModuleName entityName,
+                           "get" ++ entityName ++ name ++ "s")
+                          [CVar entvar]),
+            CSExpr (applyF (controllerModuleName entityName,
+                            "remove" ++ (linkTableName entityName name allEntities))
+                           [cvar ("old" ++ (linkTableName entityName name allEntities) ++ name ++ "s"),
+                            CVar entvar ])]
+           )
+           manyToManyEntities ++
+         [CSExpr $ applyF (erdname, "delete" ++ entityName) [CVar entvar]])]
 
 ------------------------------------------------------------------------------
 listController :: ControllerGenerator
