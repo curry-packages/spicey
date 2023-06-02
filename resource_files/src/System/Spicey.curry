@@ -1,20 +1,18 @@
---------------------------------------------------------------------------
---- This module implements some auxiliary operations to support the
+------------------------------------------------------------------------------
+--- This module implements auxiliary operations to support the
 --- generic implementation of the Spicey entities.
---------------------------------------------------------------------------
+------------------------------------------------------------------------------
 
 module System.Spicey (
-  Controller, EntityController(..), showRoute, editRoute, deleteRoute,
-  applyControllerOn,
-  redirectController,
-  nextController, nextControllerForData,
-  confirmDeletionPage,
+  Controller, EntityController(..),
+  showRoute, editRoute, deleteRoute, listRoute,
+  applyControllerOn, redirectController, nextInProcessOr,
   transactionController,
+  confirmDeletionPage,
   getControllerURL,getControllerParams, showControllerURL,
   getPage, wDateType, wBoolean, wUncheckMaybe, wFloat,
   displayError, displayUrlError, cancelOperation,
   renderWUI, renderLabels,
-  nextInProcessOr,
   stringToHtml, maybeStringToHtml,
   intToHtml,maybeIntToHtml, floatToHtml, maybeFloatToHtml,
   boolToHtml, maybeBoolToHtml, dateToHtml, maybeDateToHtml,
@@ -24,7 +22,8 @@ module System.Spicey (
   saveLastUrl, getLastUrl, getLastUrls
   ) where
 
-import Data.Char        ( isSpace, isDigit )
+import Data.Char           ( isSpace, isDigit )
+import Data.List           ( split )
 
 import Data.Time
 import System.FilePath     ( (</>) )
@@ -41,25 +40,28 @@ import System.Processes
 import System.Authentication
 
 --------------------------------------------------------------------------
--- a viewable can be turned into a representation which can be displayed
--- as interface
--- here: a representation of a HTML page
-type Viewable = HtmlPage
-
+--- A `ViewBlock` can be turned into a representation which can be displayed
+--- in a web page. Thus, it is a basic HTML document.
+--- The transformation of a `ViewBlock` into the displayed web page is done
+--- by the operation 'getPage'.
 type ViewBlock = [BaseHtml]
 
---- Controllers contains all logic and their result should be a Viewable.
+--- Controllers contains all logic and their result should be a `ViewBlock`.
 --- if the behavior of controller should depend on URL parameters
 --- (following the first name specifying the controller), one
 --- can access these URL parameters by using the operation
 --- Spicey.getControllerParams inside the controller.
 type Controller = IO ViewBlock
 
+------------------------------------------------------------------------------
+-- Auxiliaries for routing.
 
 --- The type class `EntityController` contains:
 --- * the application of a controller to some entity identified by a key string
 --- * an operation to construct a URL route for an entity w.r.t. to a route
 ---   string
+--- The instances for all entitiy types are defined in the module
+--- `Config.EntityRoutes`.
 class EntityController a where
   controllerOnKey :: String -> (a -> Controller) -> Controller
 
@@ -78,11 +80,21 @@ editRoute = entityRoute "edit"
 deleteRoute :: EntityController a => a -> String
 deleteRoute = entityRoute "delete"
 
+--- Returns the URL route to list all entities of the type of the given entity.
+--- The given entity is not evaluated but only used to resolve the
+--- overloaded type instance.
+listRoute :: EntityController a => a -> String
+listRoute a = let xs = split (=='/') (showRoute a)
+              in case xs of []  -> "?" -- should not occur
+                            x:_ -> x ++ "/list"
+
+------------------------------------------------------------------------------
+-- Auxiliaries for controllers.
 
 --- Reads an entity for a given key and applies a controller to it.
 applyControllerOn :: Maybe enkey -> (enkey -> IO en)
                   -> (en -> Controller) -> Controller
-applyControllerOn Nothing _ _ = displayUrlError
+applyControllerOn Nothing        _       _              = displayUrlError
 applyControllerOn (Just userkey) getuser usercontroller =
   getuser userkey >>= usercontroller
 
@@ -91,18 +103,25 @@ applyControllerOn (Just userkey) getuser usercontroller =
 redirectController :: String -> Controller
 redirectController url = return [htmlText url]
 
-nextController :: Controller -> _ -> IO HtmlPage
-nextController controller _ = do
-  view <- controller
-  getPage view
+--- A controller to execute a transaction and proceed, if the transaction
+--- succeeds, with a given controller applied to the transaction result.
+--- Otherwise, the transaction error is shown.
+--- @param trans - the transaction to be executed
+--- @param controller - the controller executed in case of success
+transactionController :: IO (SQLResult a) -> (a -> Controller) -> Controller
+transactionController trans controller =
+  trans >>= either (displayError . show) controller
 
--- for WUIs
-nextControllerForData :: (a -> Controller) -> a -> IO HtmlPage
-nextControllerForData controller param = do
-  view <- controller param
-  getPage view
+--- If we are in a process, execute the next process depending on
+--- the provided information passed in the second argument,
+--- otherwise execute the given controller (first argument).
+nextInProcessOr :: Controller -> Maybe ControllerResult -> Controller
+nextInProcessOr controller arg = do
+  isproc <- isInProcess
+  if isproc then advanceInProcess arg >> return [htxt ""] -- triggers redirect
+            else controller
 
-
+------------------------------------------------------------------------------
 --- Generates a page to ask the user for a confirmation to delete an entity
 --- specified in the controller URL (of the form "entity/delete/key/...").
 --- The yes/no answers are references derived from the controller URL
@@ -121,25 +140,6 @@ confirmDeletionPage _ question = do
             nbsp,
             hrefScndSmButton (showControllerURL entity ["list"]) [htxt "No"]]]
     _ -> displayUrlError
-
-
---- A controller to execute a transaction and proceed, if the transaction
---- succeeds, with a given controller applied to the transaction result.
---- Otherwise, the transaction error is shown.
---- @param trans - the transaction to be executed
---- @param controller - the controller executed in case of success
-transactionController :: IO (SQLResult a) -> (a -> Controller) -> Controller
-transactionController trans controller =
-  trans >>= either (\error -> displayError (show error)) controller
-
---- If we are in a process, execute the next process depending on
---- the provided information passed in the second argument,
---- otherwise execute the given controller (first argument).
-nextInProcessOr :: Controller -> Maybe ControllerResult -> Controller
-nextInProcessOr controller arg = do
-  isproc <- isInProcess
-  if isproc then advanceInProcess arg >> return [htxt ""] -- triggers redirect
-            else controller
 
 
 --------------------------------------------------------------------------

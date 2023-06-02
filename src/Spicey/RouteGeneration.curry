@@ -67,7 +67,7 @@ generateStartpointDataForERD (ERD _ entities _) = simpleCurryProg
       "Controllers are identified here by constants of type\n"++
       "ControllerReference. The actual mapping of these constants\n"++
       "into the controller operations is specified in the module\n"++
-      "ControllerMapping.")
+      "`Config.ControllerMapping`.")
      (dataModuleName, "getRoutes")
      0
      Public 

@@ -11,7 +11,7 @@ import Spicey.GenerationHelper
 generateToHtml :: String -> [Entity] -> [Relationship] -> CurryProg
 generateToHtml erdname allEntities relationships = simpleCurryProg
   (entitiesToHtmlModule erdname)
-  [timeModule, "HTML.Base", "HTML.WUI", spiceyModule, erdname] -- imports
+  [timeModule, "HTML.Base", "HTML.WUI", spiceyModule, model erdname] -- imports
   [] -- typedecls
   -- functions
   (
@@ -21,8 +21,8 @@ generateToHtml erdname allEntities relationships = simpleCurryProg
                   allEntities))
   )
   []
-  
-  
+
+
 generateToHtmlForEntity :: String -> [Entity] -> Entity -> [Relationship]
                         -> [CFuncDecl]
 generateToHtmlForEntity erdname allEntities (Entity ename attrlist) relationships =
@@ -44,17 +44,17 @@ toListView erdname (Entity entityName attrlist) _ _ =
    "This view is used in a row of a table of all entities.")
   (thisModuleName erdname, lowerFirst entityName ++ "ToListView") 2 Public
   (withHTMLContext
-     (baseType (erdname, entityName) ~> listType (listType htmlTVar)))
+     (baseType (model erdname, entityName) ~> listType (listType htmlTVar)))
   [simpleRule [CPVar (1, lowerFirst entityName)]
      (list2ac (
             (map (\a -> list2ac [
                           applyF (attributeToConverter a) [
-                            applyF (erdname, (lowerFirst entityName)++(attributeName a)) [
-                              cvar (lowerFirst entityName)
-                            ]
+                            applyF (model erdname,
+                                    lowerFirst entityName ++ attributeName a)
+                                   [cvar (lowerFirst entityName)]
                           ]
                         ]
-                 ) 
+                 )
               attrlist
            )
          )
@@ -68,7 +68,7 @@ toShortView erdname (Entity entityName attrlist) _ _ =
   (thisModuleName erdname, (lowerFirst entityName)++"ToShortView")
   2
   Public
-  (baseType (erdname, entityName) ~> stringType)
+  (baseType (model erdname, entityName) ~> stringType)
   [simpleRule [CPVar (1,eName)]
      (case attributeDomain firstKeyAttribute of
          StringDom _ -> accessFirstKeyAttribute
@@ -78,7 +78,8 @@ toShortView erdname (Entity entityName attrlist) _ _ =
     eName = lowerFirst entityName
 
     accessFirstKeyAttribute =
-      applyF (erdname, eName++attributeName firstKeyAttribute) [cvar eName]
+      applyF (model erdname, eName ++ attributeName firstKeyAttribute)
+             [cvar eName]
 
     firstKeyAttribute = findKeyAttribute attrlist attrlist
     
@@ -104,7 +105,7 @@ toDetailsView erdname (Entity entityName attrlist) relationships allEntities =
   -- function type
   (withHTMLContext $
      foldr CFuncType (listType htmlTVar)
-           ([baseType (erdname, entityName)] ++
+           ([baseType (model erdname, entityName)] ++
             (map ctvar manyToOneEntities) ++ -- defaults for n:1
             (map (\name -> listType (ctvar name)) manyToManyEntities)
            )
@@ -136,8 +137,8 @@ toDetailsView erdname (Entity entityName attrlist) relationships allEntities =
          (list2ac
             (map (\a -> list2ac [
                           applyF (attributeToConverter a)
-                                 [applyF (erdname, eName ++ attributeName a)
-                                         [CVar evar]]])
+                              [applyF (model erdname, eName ++ attributeName a)
+                                      [CVar evar]]])
                  attrlist ++
              map (\ (name,varId) ->
                     list2ac [applyF (html "htxt")

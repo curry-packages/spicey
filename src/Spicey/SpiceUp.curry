@@ -21,7 +21,7 @@ import Spicey.Scaffolding
 systemBanner :: String
 systemBanner =
   let bannerText = "Spicey Web Framework (Version " ++ packageVersion ++
-                   " of 01/06/23)"
+                   " of 02/06/23)"
       bannerLine = take (length bannerText) (repeat '-')
    in bannerLine ++ "\n" ++ bannerText ++ "\n" ++ bannerLine
 
@@ -172,44 +172,66 @@ createStructure target_path _ erd erprogpath db_path
 main :: IO ()
 main = do
   putStrLn systemBanner
-  args <- getArgs
+  getArgs >>= checkArgs "" ""
+
+checkArgs :: String -> String -> [String] -> IO ()
+checkArgs dbfile dir args =
   case args of
     ["-h"]     -> spiceupHelp 0
     ["--help"] -> spiceupHelp 0
     ["-?"]     -> spiceupHelp 0
-    ["--db",dbfile,orgfile] -> createStructureWith orgfile dbfile
-    [orgfile]               -> createStructureWith orgfile ""
-    _ -> putStrLn ("Wrong arguments!\n") >> spiceupHelp 1
- where
-  createStructureWith orgfile dbfile = do
-    -- set CURRYPATH in order to compile ERD model (which requires Database.ERD)
-    unless (null packageLoadPath) $ setEnv "CURRYPATH" packageLoadPath
-    -- The directory containing the resource files of the project generator:
-    let resourcedir = packagePath </> "resource_files"
-    exfile <- doesFileExist orgfile
-    unless exfile $ error ("File '" ++ orgfile ++ "' does not exist!")
-    unless (".curry"  `isSuffixOf` orgfile ||
-            ".lcurry" `isSuffixOf` orgfile) $ do
-       putStrLn $ "ERROR: '" ++ orgfile ++ "' is not a Curry program file!"
-       exitWith 1
-    erd <- readERDFromProgram orgfile
-    let pkgname = erdName erd
-    createDirectoryIfMissing True pkgname
-    dbpath <- getAbsolutePath $ if null dbfile then pkgname </> pkgname ++ ".db"
-                                               else dbfile
-    createStructure pkgname resourcedir erd orgfile dbpath
-                    (spiceyStructure pkgname)
-    -- save original ERD specification in src/Model directory:
-    copyFile orgfile
-             (pkgname </> "src" </> "Model" </> erdName erd ++ "_ERD.curry")
-    putStrLn (helpText pkgname dbpath)
+    ("--db":ndbfile:margs) -> checkArgs ndbfile dir margs
+    ("--dir":ndir:margs)   -> checkArgs dbfile ndir margs
+    [orgfile]              -> createStructureWith orgfile dbfile dir
+    _ -> putStrLn "Wrong arguments!\n" >> spiceupHelp 1
 
-  helpText pkgname dbpath = unlines $
+spiceupHelp :: Int -> IO ()
+spiceupHelp ecode = putStrLn helpText >> exitWith ecode
+ where
+  helpText = unlines $
+   [ "Usage:"
+   , ""
+   , "    spiceup [--db <DBFILE> | --dir <DIR>] <ERD program file>"
+   , ""
+   , "Parameters:"
+   , "--db <DBFILE>     : name of SQLite3 database file (default: <ERD name>.db)"
+   , "--dir <DIR>       : generate application into <DIR> (default: <ERD name>)"
+   , "<ERD program file>: name of Curry program file containing ERD definition"
+   ]
+
+createStructureWith :: String -> String -> String -> IO ()
+createStructureWith orgfile dbfile outdir = do
+  -- set CURRYPATH in order to compile ERD model (which requires Database.ERD)
+  unless (null packageLoadPath) $ setEnv "CURRYPATH" packageLoadPath
+  -- The directory containing the resource files of the project generator:
+  let resourcedir = packagePath </> "resource_files"
+  exfile <- doesFileExist orgfile
+  unless exfile $ error ("File '" ++ orgfile ++ "' does not exist!")
+  unless (".curry"  `isSuffixOf` orgfile ||
+          ".lcurry" `isSuffixOf` orgfile) $ do
+     putStrLn $ "ERROR: '" ++ orgfile ++ "' is not a Curry program file!"
+     exitWith 1
+  erd <- readERDFromProgram orgfile
+  let pkgname = erdName erd
+      pkgdir  = if null outdir then pkgname else outdir
+  createDirectoryIfMissing True pkgdir
+  dbpath <- getAbsolutePath $ if null dbfile then pkgdir </> pkgname ++ ".db"
+                                             else dbfile
+  createStructure pkgdir resourcedir erd orgfile dbpath
+                  (spiceyStructure pkgname)
+  -- save original ERD specification in src/Model directory:
+  copyFile orgfile
+           (pkgdir </> "src" </> "Model" </> erdName erd ++ "_ERD.curry")
+  putStrLn (helpText pkgname pkgdir dbpath)
+ where
+  helpText pkgname pkgdir dbpath = unlines $
     [ take 70 (repeat '-')
-    , "Source files for the application generated as Curry package '" ++
-      pkgname ++ "'."
+    , "Source files for the application generated as"
+    , "Curry package '" ++ pkgname ++ "' in directory '" ++ pkgdir ++ "'."
     , ""
-    , "The database is stored in: " ++ dbpath
+    , "The database is stored in:"
+    ,  dbpath
+    , ""
     , "If you want to store it at another place, move this file and change"
     , "the definition of 'sqliteDBFile' in 'src/Model/" ++ pkgname ++ ".curry'."
     , ""
@@ -220,18 +242,5 @@ main = do
     , "Before you deploy your web application (by 'make deploy'),"
     , "you should define the variable WEBSERVERDIR in the Makefile!"
     ]
-
-spiceupHelp :: Int -> IO ()
-spiceupHelp ecode = putStrLn helpText >> exitWith ecode
- where
-  helpText = unlines $
-   [ "Usage:"
-   , ""
-   , "    spiceup [--db <db file>] <ERD program file>"
-   , ""
-   , "Parameters:"
-   , "--db <db file>    : name of the SQLite3 database file (default: <ERD name>.db)"
-   , "<ERD program file>: name of Curry program file containing ERD definition"
-   ]
 
 ------------------------------------------------------------------------

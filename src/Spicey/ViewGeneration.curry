@@ -18,7 +18,7 @@ generateViewsForEntity erdname allEntities
   (viewModuleName ename)
   [ listModule, timeModule
   , "HTML.Base", bootstrapModule, "HTML.WUI"
-  , erdname
+  , model erdname
   , "Config.EntityRoutes"
   , sessionInfoModule, spiceyModule
   , entitiesToHtmlModule erdname] -- imports
@@ -67,7 +67,8 @@ wuiSpec erdname (Entity entityName attrlist) relationships allEntities =
               applyF (combinator argumentCount) 
                ( attrWidgets attrlist ++
                  map (\e -> applyF (wuiModule "wSelect")
-                              [constF (erdname, lowerFirst e++"ToShortView"),
+                              [constF (entitiesToHtmlModule erdname,
+                                       lowerFirst e ++ "ToShortView"),
                                CVar (1, lowerFirst $ e ++ "List")])
                      manyToOneEntities ++
                  map (\e -> 
@@ -75,7 +76,8 @@ wuiSpec erdname (Entity entityName attrlist) relationships allEntities =
                    [CLambda [CPVar (1, lowerFirst e)]
                       (list2ac [
                         applyF (html "htxt") [
-                         applyF (erdname, lowerFirst e++"ToShortView")
+                         applyF (entitiesToHtmlModule erdname,
+                                 lowerFirst e ++ "ToShortView")
                                 [CVar (1, lowerFirst e)]
                          ]]),
                     CVar (1, lowerFirst $ e ++ "List")
@@ -101,7 +103,7 @@ tuple2Entity erdname (Entity entityName attrlist) relationships allEntities =
     (
      foldr CFuncType
       (if null manyToManyEntities
-       then baseType (erdname, entityName)
+       then baseType (model erdname, entityName)
        else tupleType ([ctvar entityName] ++
                        map (\name -> listType (ctvar name)) manyToManyEntities)
       )
@@ -128,11 +130,11 @@ tuple2Entity erdname (Entity entityName attrlist) relationships allEntities =
          (foldr (\ (Attribute aname domain _ _) expr ->
                    case domain of
                      (KeyDom rel) ->
-                       applyF (erdname, "set"++entityName++aname)
+                       applyF (model erdname, "set" ++ entityName ++ aname)
                               [expr,
-                               applyF (erdname, (lowerFirst rel)++"Key")
+                               applyF (model erdname, lowerFirst rel ++ "Key")
                                       [CVar (1, lowerFirst rel)]]
-                     _ -> applyF (erdname, "set"++entityName++aname)
+                     _ -> applyF (model erdname, "set" ++ entityName ++ aname)
                                  [expr,  CVar (1, lowerFirst aname)]  )
                 
                  (CVar (0, lowerFirst $ entityName++"ToUpdate"))
@@ -159,7 +161,7 @@ entity2Tuple erdname (Entity entityName attrlist) relationships allEntities =
         
         [(
           if null manyToManyEntities
-          then baseType (erdname, entityName)
+          then baseType (model erdname, entityName)
           else
             tupleType ([ctvar entityName] ++
                        map (\name -> listType (ctvar name)) manyToManyEntities)
@@ -181,7 +183,7 @@ entity2Tuple erdname (Entity entityName attrlist) relationships allEntities =
       )
       (tupleExpr
             (map (\ (Attribute a _ _ _) ->
-                     applyF (erdname, (lowerFirst entityName)++a)
+                     applyF (model erdname, lowerFirst entityName ++ a)
                             [cvar (lowerFirst entityName)])
                   (filter notKey attrlist) ++
              map (\e -> cvar (lowerFirst e)) manyToOneEntities ++
@@ -247,17 +249,18 @@ leqEntity erdname (Entity entityName attrlist) _ _ =
     ("Compares two "++entityName++" entities. This order is used in the list view.")
     (viewModuleName entityName, "leq" ++ entityName) 2 Private
     -- function type
-    (baseType (erdname,entityName) ~> baseType (erdname,entityName) ~>boolType)
+    (baseType (model erdname,entityName) ~> baseType (model erdname,entityName)
+      ~> boolType)
     [let ename = lowerFirst entityName
          e1 = (1,"x1")
          e2 = (2,"x2")
       in simpleRule [CPVar e1,CPVar e2]
            (applyF (pre "<=")
                    [tupleExpr (map (\ (Attribute a _ _ _) ->
-                                       applyF (erdname,ename++a) [CVar e1])
+                                     applyF (model erdname,ename++a) [CVar e1])
                                    (take 5 (filter notKey attrlist))),
                     tupleExpr (map (\ (Attribute a _ _ _) ->
-                                       applyF (erdname,ename++a) [CVar e2])
+                                     applyF (model erdname,ename++a) [CVar e2])
                                    (take 5 (filter notKey attrlist)))
                    ])]
 
@@ -275,7 +278,7 @@ showView erdname (Entity entityName attrlist) relationships allEntities =
       -- function type
       (userSessionInfoType ~>
        foldr CFuncType viewBlockType (
-          [baseType (erdname,entityName)] ++
+          [baseType (model erdname,entityName)] ++
           (map ctvar manyToOneEntities) ++ -- defaults for n:1
           (map (\name -> listType (ctvar name)) manyToManyEntities))
       )
@@ -298,9 +301,9 @@ showView erdname (Entity entityName attrlist) relationships allEntities =
                             [(length manyToOneEntities + 3)..])
                   ),
                list2ac [applyF hrefButtonName
-                         [string2ac ("?" ++ entityName ++ "/list"),
+                         [applyF (spiceyModule,"listRoute") [CVar evar],
                           list2ac [applyF (html "htxt")
-                            [string2ac ("back to " ++ entityName ++ " list")]]]]
+                            [string2ac ("To " ++ entityName ++ " list")]]]]
               ]
             )]
       
@@ -314,7 +317,7 @@ listView erdname (Entity entityName attrlist) _ _ =
      " entities.\n")
     entityName "list" 1
     -- function type
-    (userSessionInfoType ~> listType (baseType (erdname,entityName))
+    (userSessionInfoType ~> listType (baseType (model erdname,entityName))
                          ~> viewBlockType)
     [CRule
       [CPVar infovar, CPVar entsvar]
@@ -330,13 +333,13 @@ listView erdname (Entity entityName attrlist) _ _ =
                     applyF (pre "take") [
                       CLit (CIntc (length attrlist)),
                       constF (entitiesToHtmlModule erdname,
-                              lowerFirst entityName++"LabelList")
+                              lowerFirst entityName ++ "LabelList")
                     ]
                   ],
                   applyF (pre "map") [
-                    constF (viewModuleName entityName,"list"++entityName),
+                    constF (viewModuleName entityName,"list" ++ entityName),
                     applyF (listModule,"sortBy") [
-                        constF (viewModuleName entityName,"leq"++entityName),
+                        constF (viewModuleName entityName,"leq" ++ entityName),
                         CVar entsvar
                     ]
                   ]

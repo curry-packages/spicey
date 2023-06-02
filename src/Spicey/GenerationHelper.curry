@@ -20,6 +20,10 @@ upperFirst (y:ys) = (toUpper y) : ys
 upperFirst []     = [] -- this case should not occur, but one never knows...
 
 ------------------------------------------------------------------------
+--- Qualify a string (module name) with the prefix `Model.`
+model :: String -> String
+model s = "Model." ++ s
+
 --- Converts a string into a qualified name of the module
 --- "Database.CDBI.Connection".
 dbconn :: String -> QName
@@ -77,7 +81,7 @@ mappingModuleName = "Config.ControllerMapping"
 
 --- Name of EntitiesToHtml module.
 entitiesToHtmlModule :: String -> String
-entitiesToHtmlModule erdname = "View.EntitiesToHtml"
+entitiesToHtmlModule _ = "View.EntitiesToHtml"
 
 bootstrapModule :: String
 bootstrapModule = "HTML.Styles.Bootstrap4"

@@ -14,8 +14,9 @@ import System.Directory
 import System.FilePath ( (</>) )
 import System.Process  ( system )
 
-import ERD2Curry ( erd2CDBI )
+import ERD2Curry            ( startWithERD, EROptions(..), defaultEROptions )
 import Database.ERD.Goodies
+import Database.ERD.ToKeyDB ( Storage(..) )
 
 import Spicey.ControllerGeneration
 import Spicey.EntitiesToHtmlGeneration
@@ -101,7 +102,13 @@ createModels erprogpath erd path dbfile = do
   let erdname = erdName erd
   curdir <- getCurrentDirectory
   setCurrentDirectory path
-  erd2CDBI dbfile erprogpath erd
+  --erd2CDBI dbfile erprogpath erd
+  startWithERD
+    (defaultEROptions { optStorage = SQLite dbfile, optCDBI = True
+                      , optModule  = "Model." ++ erdname
+                      , optFile    = erdname ++ ".curry" })
+    erprogpath
+    erd
   setCurrentDirectory curdir
 
 createRoutes :: String -> ERD -> String -> String -> IO ()
@@ -120,7 +127,7 @@ createRoutes _ erd path _ = do
 generateAuthorizations :: String -> [Entity] -> CurryProg
 generateAuthorizations erdname entities = simpleCurryProg
   enauthModName
-  [authorizationModule, sessionInfoModule, erdname] -- imports
+  [authorizationModule, sessionInfoModule, model erdname] -- imports
   [] -- typedecls
   -- functions
   (map operationAllowed entities)
@@ -133,7 +140,8 @@ generateAuthorizations erdname entities = simpleCurryProg
     (enauthModName, lowerFirst entityName ++ "OperationAllowed")
     1
     Public
-    (applyTC (authorizationModule,"AccessType") [baseType (erdname,entityName)]
+    (applyTC (authorizationModule,"AccessType")
+             [baseType (model erdname, entityName)]
      ~> baseType (sessionInfoModule,"UserSessionInfo")
      ~> ioType (baseType (authorizationModule,"AccessResult")))
     [simpleRule [CPVar (1,"at"), CPVar (2,"_")]

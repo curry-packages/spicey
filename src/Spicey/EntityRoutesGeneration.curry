@@ -17,7 +17,7 @@ generateRoutesForEntity erdname allEntities =
   CurryProg
    "Config.EntityRoutes"
    -- imports:
-   [ "System.Spicey", erdname ]
+   [ "System.Spicey", model erdname ]
    Nothing -- defaultdecl
    [] -- classdecls
    (map (controllerInstDecl erdname) allEntities) -- instdecls
@@ -46,15 +46,16 @@ controllerInstDecl erdname (Entity entityName _) =
                 [string2ac $ '?' : entityName ++ "/",
                  CVar rvar,
                  string2ac "/",
-                 applyF (erdname, "show" ++ entityName ++ "Key")
+                 applyF (model erdname, "show" ++ entityName ++ "Key")
                         [CVar entvar]]])]]
  where
-  entityType  = baseType (erdname, entityName)
+  entityType  = baseType (model erdname, entityName)
   rvar        = (1,"r")
   entvar      = (2,"ent")
-  readKey     = applyF (erdname, "read" ++ entityName ++ "Key") [CVar (2,"s")]
+  readKey     = applyF (model erdname, "read" ++ entityName ++ "Key")
+                       [CVar (2,"s")]
   getEntityOp = applyF (pre ".")
-                       [constF (erdname, "runJustT"),
-                        constF (erdname, "get" ++ entityName)]
+                       [constF (model erdname, "runJustT"),
+                        constF (model erdname, "get" ++ entityName)]
 
 ------------------------------------------------------------------------
