@@ -21,7 +21,7 @@ import Spicey.Scaffolding
 systemBanner :: String
 systemBanner =
   let bannerText = "Spicey Web Framework (Version " ++ packageVersion ++
-                   " of 02/06/23)"
+                   " of 04/06/23)"
       bannerLine = take (length bannerText) (repeat '-')
    in bannerLine ++ "\n" ++ bannerText ++ "\n" ++ bannerLine
 
@@ -58,6 +58,7 @@ spiceyStructure pkgname =
         srcfile $ "System" </> "Authorization.curry",
         srcfile $ "System" </> "Authentication.curry",
         srcfile $ "System" </> "Processes.curry",
+        srcfile $ "System" </> "PreludeHelpers.curry",
         GeneratedFromERD createAuthorizations ],
       Directory "View" [
         srcfile $ "View" </> "SpiceySystem.curry",

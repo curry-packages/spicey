@@ -11,7 +11,8 @@ import Spicey.GenerationHelper
 generateToHtml :: String -> [Entity] -> [Relationship] -> CurryProg
 generateToHtml erdname allEntities relationships = simpleCurryProg
   (entitiesToHtmlModule erdname)
-  [timeModule, "HTML.Base", "HTML.WUI", spiceyModule, model erdname] -- imports
+  [ timeModule, "HTML.Base", bootstrapModule, "HTML.WUI", "Config.EntityRoutes"
+  , spiceyModule, model erdname] -- imports
   [] -- typedecls
   -- functions
   (
@@ -35,36 +36,39 @@ generateToHtmlForEntity erdname allEntities (Entity ename attrlist) relationship
   noKeyAttr a = (notKey a) && (notPKey a)
   
   
-type ToHtmlGenerator = String -> Entity -> [Relationship] -> [Entity] -> CFuncDecl
+type ToHtmlGenerator =
+       String -> Entity -> [Relationship] -> [Entity] -> CFuncDecl
 
 toListView :: ToHtmlGenerator
 toListView erdname (Entity entityName attrlist) _ _ =
  cmtfunc
-  ("The list view of a "++entityName++" entity in HTML format.\n"++
+  ("The list view of a " ++ entityName ++ " entity in HTML format.\n" ++
    "This view is used in a row of a table of all entities.")
-  (thisModuleName erdname, lowerFirst entityName ++ "ToListView") 2 Public
+  (thisModuleName erdname, lowEntity ++ "ToListView") 2 Public
   (withHTMLContext
      (baseType (model erdname, entityName) ~> listType (listType htmlTVar)))
-  [simpleRule [CPVar (1, lowerFirst entityName)]
-     (list2ac (
-            (map (\a -> list2ac [
-                          applyF (attributeToConverter a) [
-                            applyF (model erdname,
-                                    lowerFirst entityName ++ attributeName a)
-                                   [cvar (lowerFirst entityName)]
-                          ]
-                        ]
-                 )
-              attrlist
-           )
-         )
-     )]
+  [simpleRule [CPVar envar]
+     (list2ac
+       (map (\a@(Attribute _ domain key _) ->
+              let attref = applyF (model erdname, lowEntity ++ attributeName a)
+                                  [CVar envar]
+              in list2ac
+                  [if key == Unique
+                     then applyF hrefSmallButtonName
+                           [applyF (spiceyModule,"showRoute") [CVar envar],
+                            list2ac [applyF (attributeToConverter a) [attref]]]
+                     else applyF (attributeToConverter a) [attref]
+                  ] )
+            attrlist))]
+ where lowEntity = lowerFirst entityName
+       envar = (1, lowEntity)
 
 toShortView :: ToHtmlGenerator
 toShortView erdname (Entity entityName attrlist) _ _ =
   stCmtFunc
-  ("The short view of a "++entityName++" entity as a string.\n"++
-   "This view is used in menus and comments to refer to a "++entityName++" entity.")
+  ("The short view of a " ++ entityName ++ " entity as a string.\n"++
+   "This view is used in menus and comments to refer to a " ++ entityName ++
+   " entity.")
   (thisModuleName erdname, (lowerFirst entityName)++"ToShortView")
   2
   Public
@@ -84,8 +88,8 @@ toShortView erdname (Entity entityName attrlist) _ _ =
     firstKeyAttribute = findKeyAttribute attrlist attrlist
     
     findKeyAttribute (attr@(Attribute _ _ key _):attrList) fullList =
-      if key== Unique then attr
-                      else findKeyAttribute attrList fullList
+      if key == Unique then attr
+                       else findKeyAttribute attrList fullList
     findKeyAttribute [] fullList = head fullList
 
 toDetailsView :: ToHtmlGenerator
@@ -163,30 +167,29 @@ toDetailsView erdname (Entity entityName attrlist) relationships allEntities =
 
 labelList :: ToHtmlGenerator
 labelList erdname (Entity entityName attrlist) relationships allEntities =
-  let
-    manyToManyEntities = manyToMany allEntities (Entity entityName attrlist)
-    manyToOneEntities = manyToOne (Entity entityName attrlist) relationships
-  in
-   cmtfunc
-    ("The labels of a "++entityName++" entity, as used in HTML tables.")
-    (thisModuleName erdname, (lowerFirst entityName)++"LabelList") 2 Public
-    (withHTMLContext (listType (listType htmlTVar)))
-    [simpleRule []
-      (list2ac (
-            (map (\ (Attribute name domain _ _) ->
-                   list2ac
+  cmtfunc
+   ("The labels of a " ++ entityName ++ " entity, as used in HTML tables.")
+   (thisModuleName erdname, lowerFirst entityName ++ "LabelList") 2 Public
+   (withHTMLContext (listType (listType htmlTVar)))
+   [simpleRule []
+     (list2ac (
+           (map (\ (Attribute name domain _ _) ->
+                  list2ac
+                    [applyF (html "textstyle")
+                            [string2ac ("spicey_label spicey_label_for_type_"++
+                                        domainToString domain),
+                             string2ac name]])
+                attrlist) ++
+           (map (\s -> list2ac
                      [applyF (html "textstyle")
-                             [string2ac ("spicey_label spicey_label_for_type_"++
-                                         domainToString domain),
-                              string2ac name]])
-                 attrlist) ++
-            (map (\s -> list2ac
-                          [applyF (html "textstyle")
-                            [string2ac "spicey_label spicey_label_for_type_relation",
-                             string2ac s]])
-                 (manyToOneEntities++manyToManyEntities))
-          )
-       )]
+                       [string2ac "spicey_label spicey_label_for_type_relation",
+                        string2ac s]])
+                (manyToOneEntities ++ manyToManyEntities))
+         )
+      )]
+ where
+  manyToManyEntities = manyToMany allEntities (Entity entityName attrlist)
+  manyToOneEntities = manyToOne (Entity entityName attrlist) relationships
 
 thisModuleName :: String -> String
 thisModuleName erdname = entitiesToHtmlModule erdname
@@ -199,13 +202,12 @@ attributeToConverter (Attribute _ domain _ isnull) =
      else domainToString domain ++ "ToHtml")
 
 domainToString :: Domain -> String
-domainToString domain =
-  case domain of
-    IntDom    _     -> "int"
-    FloatDom  _     -> "float"
-    CharDom   _     -> "char"
-    StringDom _     -> "string"
-    BoolDom   _     -> "bool"
-    DateDom   _     -> "date"
-    UserDefined _ _ -> "userDefined"
-    KeyDom    _     -> "key"
+domainToString domain = case domain of
+  IntDom    _     -> "int"
+  FloatDom  _     -> "float"
+  CharDom   _     -> "char"
+  StringDom _     -> "string"
+  BoolDom   _     -> "bool"
+  DateDom   _     -> "date"
+  UserDefined _ _ -> "userDefined"
+  KeyDom    _     -> "key"

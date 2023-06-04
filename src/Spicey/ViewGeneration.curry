@@ -356,26 +356,25 @@ listView erdname (Entity entityName attrlist) _ _ =
               applyF (entitiesToHtmlModule erdname,
                       lowerFirst entityName++"ToListView")
                      [cvar $ lowerFirst entityName],
-              applyF (pre "if_then_else")
-               [applyF (pre "==")
-                 [applyF (sessionInfoModule,"userLoginOfSession")
-                         [CVar infovar],
-                  constF (pre "Nothing")],
-                list2ac [],
-                list2ac
-                 [list2ac
-                   [applyF hrefSmallButtonName
-                     [applyF (spiceyModule,"showRoute") [CVar envar],
-                      list2ac [applyF (html "htxt") [string2ac "Show"]]]],
-                  list2ac
-                   [applyF hrefSmallButtonName
-                     [applyF (spiceyModule,"editRoute") [CVar envar],
-                      list2ac [applyF (html "htxt") [string2ac "Edit"]]]],
-                  list2ac
-                   [applyF hrefSmallButtonName
-                     [applyF (spiceyModule,"deleteRoute") [CVar envar],
-                      list2ac [applyF (html "htxt") [string2ac "Delete"]]]]
-              ]]
+              ifThenElseExp
+                (applyF (pre "==")
+                   [applyF (sessionInfoModule,"userLoginOfSession")
+                           [CVar infovar],
+                    constF (pre "Nothing")])
+                (list2ac [])
+                (list2ac
+                  [list2ac
+                    [applyF hrefSmallButtonName
+                       [applyF (spiceyModule,"showRoute") [CVar envar],
+                        list2ac [applyF (html "htxt") [string2ac "Show"]]]],
+                    list2ac
+                     [applyF hrefSmallButtonName
+                       [applyF (spiceyModule,"editRoute") [CVar envar],
+                        list2ac [applyF (html "htxt") [string2ac "Edit"]]]],
+                    list2ac
+                     [applyF hrefSmallButtonName
+                       [applyF (spiceyModule,"deleteRoute") [CVar envar],
+                        list2ac [applyF (html "htxt") [string2ac "Delete"]]]]])
             ]
             )])
       ])

@@ -279,8 +279,8 @@ attrDefaultValues defaultctime attrs = map defaultValue attrs
     _ -> error "GenerationHelper.attrDefaultValues: unknown domain for attribute"
    where
      nothingOrDefault = if null
-                        then constF (pre "Nothing")
-                        else domainDefaultValue defaultctime domain
+                          then constF (pre "Nothing")
+                          else domainDefaultValue defaultctime domain
 
      -- add "Just" constructor if the attribute can be null-valued:
      addJust e = if null then applyF (pre "Just") [e] else e

@@ -24,7 +24,7 @@ transform (ERD name entities relationships) =
 -- Adds a new artificial primary key to an entity
 addKey :: Entity -> Entity  
 addKey (Entity en attrs) =
-  Entity en ((Attribute ("Key") (IntDom Nothing) PKey False) 
+  Entity en ((Attribute "Key" (IntDom Nothing) PKey False) 
              : (map deleteKey attrs))
  where
   -- set user-defined primary keys to "Unique"

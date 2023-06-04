@@ -34,6 +34,7 @@ generateControllersForEntity erdname allEntities
    , model erdname
    , "Config.EntityRoutes", "Config.UserProcesses"
    , sessionInfoModule, authorizationModule, enauthModName, spiceyModule
+   , "System.PreludeHelpers"
    , entitiesToHtmlModule erdname
    , viewModuleName ename
    ]
@@ -157,21 +158,28 @@ newController erdname (Entity entityName attrList) relationships allEntities =
                             [constF (model erdname,"queryAll" ++ ename ++ "s")])
            )
            (zip (manyToOneEntities ++ manyToManyEntities) [2..]) ++
-         (if withCTime
-          then [CSPat (CPVar ctimevar)
-                      (constF (timeModule,"getClockTime"))]
-          else []) ++
-         [CSExpr setParCall,         
-          CSExpr $ applyF (pre "return")
-            [list2ac [applyF (html "formElem")
-                        [constF (controllerFormName entityName "new")]]]
-         ])]]
+         (if hasDateAttribute attrList
+            then [CSPat (CPVar ctimevar) (constF (timeModule,"getClockTime"))]
+            else []) ++
+         (if null manyToOneEntities
+            then setParCallAndReturn
+            else [CSExpr $ ifThenElseExp
+                    (foldr1 (\e1 e2 -> applyF (pre "||") [e1,e2])
+                            (map (\ (name, varId) -> applyF (pre "null")
+                                      [CVar (varId, "all" ++ name ++ "s")])
+                                 (zip manyToOneEntities [2..])))
+                    (applyF (pre "return")
+                       [ list2ac [applyF (html "h2")
+                                   [list2ac [applyF (html "htxt")
+                                               [string2ac missingError]]]]])
+                    (doExpr setParCallAndReturn)]
+         ))]]
  where
   manyToManyEntities = manyToMany allEntities (Entity entityName attrList)
   manyToOneEntities  = manyToOne (Entity entityName attrList) relationships
-  withCTime          = hasDateAttribute attrList
-  infovar            = (0,"sinfo")
-  ctimevar           = (1,"ctime")
+  missingError = "Some related entities are required but not yet undefined"
+  infovar      = (0,"sinfo")
+  ctimevar     = (1,"ctime")
 
   setParCall =
     applyF (wuiModule "setParWuiStore")
@@ -181,12 +189,18 @@ newController erdname (Entity entityName attrList) relationships allEntities =
          map (\ (ename, num) -> CVar (num, "all" ++ ename ++ "s"))
              (zip (manyToOneEntities ++ manyToManyEntities) [2 ..])),
        tupleExpr $
-         attrDefaultValues (CVar (0,"ctime")) attrList ++
+         attrDefaultValues (CVar ctimevar) attrList ++
          map (\ (name, varId) -> applyF (pre "head")
-                                   [CVar (varId,("all" ++ name ++ "s"))])
+                                        [CVar (varId, "all" ++ name ++ "s")])
              (zip manyToOneEntities [2..]) ++
          map (\_ -> list2ac []) (zip manyToManyEntities [2..])
       ]
+
+  setParCallAndReturn =
+     [CSExpr setParCall,         
+      CSExpr $ applyF (pre "return")
+                 [list2ac [applyF (html "formElem")
+                          [constF (controllerFormName entityName "new")]]]]
 
 --- Generates the form definition to create a new entity.
 newForm :: String -> Entity -> [Relationship] -> [Entity] -> CFuncDecl

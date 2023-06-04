@@ -14,11 +14,11 @@ uniERD = ERD "Uni"
                      Attribute "Firstname" (StringDom Nothing) NoKey False],
   Entity "Group"    [Attribute "Time"      (StringDom Nothing) NoKey False]]
  [Relationship "Teaching"
-               [REnd "Lecturer" "taught_by" (Exactly 1),
+               [REnd "Lecturer" "taughtBy"  (Exactly 1),
                 REnd "Lecture"  "teaches"   (Between 0 Infinite)],
   Relationship "Participation"
-               [REnd "Student" "participated_by" (Between 0 Infinite),
-                REnd "Lecture" "participates"    (Between 0 Infinite)],
+               [REnd "Student" "participatedBy" (Between 0 Infinite),
+                REnd "Lecture" "participates"   (Between 0 Infinite)],
   Relationship "Membership"
-               [REnd "Student" "consists_of" (Between 0 Infinite),
-                REnd "Group"   "member_of"   (Between 0 Infinite)]]
+               [REnd "Student" "consistsOf" (Between 0 Infinite),
+                REnd "Group"   "memberOf"   (Between 0 Infinite)]]
