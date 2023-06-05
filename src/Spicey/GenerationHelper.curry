@@ -129,48 +129,37 @@ isRelevantForEntity _ [] = False
 oneToOne :: Entity -> [Relationship] -> [String]
 oneToOne (Entity ename _) rel =
     map (relatedRelation ename) (filter isOneToOne rel)
-  where
-    isOneToOne :: Relationship -> Bool
-    isOneToOne relationship =
-      case relationship of
-        (Relationship _ [(REnd _ _ (Exactly 1)), (REnd _ _ (Exactly 1))]) -> True
-        _ -> False
+ where
+  isOneToOne :: Relationship -> Bool
+  isOneToOne relationship = case relationship of
+    Relationship _ [(REnd _ _ (Exactly 1)), (REnd _ _ (Exactly 1))] -> True
+    _                                                               -> False
 
+--- Returns for a given entities the many-to-one related entity names.
 manyToOne :: Entity -> [Relationship] -> [String]
 manyToOne (Entity ename _) rel =
     map (relatedRelation ename) (filter isManyToOne rel)    
-  where
-    isManyToOne :: Relationship -> Bool
-    isManyToOne relationship =
-      case relationship of
-        (Relationship _ [REnd _ _ (Exactly 1),
-                         REnd relEName _ (Between _ _)])
-           -> relEName == ename
-        _  -> False
+ where
+  isManyToOne :: Relationship -> Bool
+  isManyToOne relationship = case relationship of
+    Relationship _ [REnd _        _ (Exactly 1),
+                    REnd relEName _ (Between _ _)] -> relEName == ename
+    _                                              -> False
 
-manyToMany :: [Entity] -> Entity -> [String]
-manyToMany entities forEntity = 
-    map (getOtherREnd forEntity)
-        (filter (\ (Entity ename attr) -> isGenerated (Entity ename attr) &&
-                                          isRelevantForEntity forEntity attr)
-                entities)
-  where
-    getOtherREnd (Entity ename _)
-                 (Entity _ [(Attribute _ (KeyDom name1) _ _),
-                            (Attribute _ (KeyDom name2) _ _)]) =
-      if (name1 == ename) then name2 else name1
+--- Returns for a given entity the many-to-many related entity names
+--- together with the relation name.
+manyToMany :: [Entity] -> Entity -> [(String,String)]
+manyToMany entities forEntity =
+  map (getOtherREnd forEntity)
+      (filter (\ (Entity ename attr) -> isGenerated (Entity ename attr) &&
+                                        isRelevantForEntity forEntity attr)
+              entities)
+ where
+  getOtherREnd (Entity ename _)
+               (Entity mmename [(Attribute _ (KeyDom name1) _ _),
+                                (Attribute _ (KeyDom name2) _ _)]) =
+    (if name1 == ename then name2 else name1, mmename)
       
-linkTableName :: String -> String -> [Entity] -> String
-linkTableName ename1 ename2 entities =
-    getLinkTableName (filter isGenerated entities)
-  where
-    getLinkTableName ((Entity name [(Attribute _ (KeyDom rel1) _ _),
-                                    (Attribute _ (KeyDom rel2) _ _)]):erest) =
-      if (rel1==ename1 && rel2==ename2) || (rel1==ename2 && rel2==ename1)
-      then name
-      else getLinkTableName erest
-    getLinkTableName [] = error "linkTableName: link not found"
-        
 --- The standard type of new and list controllers.
 controllerType :: CTypeExpr
 controllerType = baseType (spiceyModule,"Controller")

@@ -101,8 +101,9 @@ toDetailsView erdname (Entity entityName attrlist) relationships allEntities =
   in
  cmtfunc
   ("The detailed view of a " ++ entityName ++ " entity in HTML format.\n" ++
-   if null (manyToOneEntities ++ manyToManyEntities) then "" else
-   "It also takes associated entities for every associated entity type.")
+   if null manyToOneEntities && null manyToManyEntities
+     then ""
+     else "It also takes associated entities for every associated entity type.")
   (thisModuleName erdname, lowerFirst entityName ++ "ToDetailsView")
   2
   Public
@@ -111,7 +112,7 @@ toDetailsView erdname (Entity entityName attrlist) relationships allEntities =
      foldr CFuncType (listType htmlTVar)
            ([baseType (model erdname, entityName)] ++
             (map ctvar manyToOneEntities) ++ -- defaults for n:1
-            (map (\name -> listType (ctvar name)) manyToManyEntities)
+            (map (\ (name,_) -> listType (ctvar name)) manyToManyEntities)
            )
   )
   [CRule
@@ -119,7 +120,7 @@ toDetailsView erdname (Entity entityName attrlist) relationships allEntities =
       [CPVar evar] ++
        map (\ (name, varId) -> CPVar (varId,"related"++name))
             (zip manyToOneEntities [2..]) ++
-       map (\ (name, varId) -> CPVar (varId, lowerFirst name ++ "s"))
+       map (\ ((ename,erel), i) -> CPVar (i, lowerFirst erel ++ ename ++ "s"))
            (zip manyToManyEntities [(length manyToOneEntities + 2)..])
     )
     (CSimpleRhs
@@ -150,14 +151,14 @@ toDetailsView erdname (Entity entityName attrlist) relationships allEntities =
                                              lowerFirst name ++ "ToShortView")
                                             [CVar (varId,"related"++name)]]])
                  (zip manyToOneEntities [2..]) ++
-             map (\ (name,varId) ->
+             map (\ ((ename,erel),varId) ->
                     list2ac
                       [applyF (html "htxt")
-                              [applyF (pre "unwords")
-                                [applyF (pre "map")
-                                  [applyF (thisModuleName erdname,
-                                           lowerFirst name ++"ToShortView") [],
-                                   CVar (varId,lowerFirst name++"s")]]]])
+                         [applyF (pre "unwords")
+                            [applyF (pre "map")
+                               [applyF (thisModuleName erdname,
+                                        lowerFirst ename ++ "ToShortView") [],
+                                CVar (varId, lowerFirst erel ++ ename++"s")]]]])
                  (zip manyToManyEntities [(length manyToOneEntities + 2)..])
             )
         )
@@ -180,11 +181,11 @@ labelList erdname (Entity entityName attrlist) relationships allEntities =
                                         domainToString domain),
                              string2ac name]])
                 attrlist) ++
-           (map (\s -> list2ac
+           (map (\ (ename,erel) -> list2ac
                      [applyF (html "textstyle")
                        [string2ac "spicey_label spicey_label_for_type_relation",
-                        string2ac s]])
-                (manyToOneEntities ++ manyToManyEntities))
+                        string2ac $ erel ++ ename]])
+                (map (\n -> (n,"")) manyToOneEntities ++ manyToManyEntities))
          )
       )]
  where

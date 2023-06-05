@@ -48,18 +48,19 @@ wuiSpec erdname (Entity entityName attrlist) relationships allEntities =
   in
     stCmtFunc 
     ("The WUI specification for the entity type "++entityName++".\n"++
-     if null (manyToOneEntities ++ manyToManyEntities)
-     then ""
-     else "It also includes fields for associated entities.")
+     if null manyToOneEntities && null manyToManyEntities
+       then ""
+       else "It also includes fields for associated entities.")
     (viewModuleName entityName, "w"++entityName) 2 Public
     (foldr CFuncType
            (applyTC (wuiModule "WuiSpec")
                [entityInterface attrlist manyToOneEntities manyToManyEntities])
-           (map (\e -> listType (ctvar e))
-                (manyToOneEntities ++ manyToManyEntities))-- possible values
+           (map (\e -> listType (ctvar e)) -- possible values
+                (manyToOneEntities ++ map fst manyToManyEntities))
     )
-    [simpleRule (map (\e -> CPVar (1, lowerFirst $ e ++ "List"))
-                     (manyToOneEntities ++ manyToManyEntities))
+    [simpleRule
+       (map (\ (en,er) -> CPVar (1, lowerFirst $ er ++ en ++ "List"))
+            (map (\n -> (n,"")) manyToOneEntities ++ manyToManyEntities))
        (applyF (wuiModule "withRendering") [         
             (if (argumentCount == 1) then
               head (attrWidgets attrlist)
@@ -71,22 +72,22 @@ wuiSpec erdname (Entity entityName attrlist) relationships allEntities =
                                        lowerFirst e ++ "ToShortView"),
                                CVar (1, lowerFirst $ e ++ "List")])
                      manyToOneEntities ++
-                 map (\e -> 
+                 map (\ (ename,erel) -> 
                   applyF (wuiModule "wMultiCheckSelect")
-                   [CLambda [CPVar (1, lowerFirst e)]
+                   [CLambda [CPVar (1, lowerFirst ename)]
                       (list2ac [
                         applyF (html "htxt") [
                          applyF (entitiesToHtmlModule erdname,
-                                 lowerFirst e ++ "ToShortView")
-                                [CVar (1, lowerFirst e)]
+                                 lowerFirst ename ++ "ToShortView")
+                                [CVar (1, lowerFirst ename)]
                          ]]),
-                    CVar (1, lowerFirst $ e ++ "List")
+                    CVar (1, lowerFirst $ erel ++ ename ++ "List")
                   ]) manyToManyEntities
                )
             ),
             applyF (spiceyModule, "renderLabels")
                    [constF (entitiesToHtmlModule erdname,
-                            lowerFirst entityName++"LabelList")]
+                            lowerFirst entityName ++ "LabelList")]
           ]
         )]
 
@@ -105,7 +106,8 @@ tuple2Entity erdname (Entity entityName attrlist) relationships allEntities =
       (if null manyToManyEntities
        then baseType (model erdname, entityName)
        else tupleType ([ctvar entityName] ++
-                       map (\name -> listType (ctvar name)) manyToManyEntities)
+                       map (\ (ename,_) -> listType (ctvar ename))
+                           manyToManyEntities)
       )
       ([ctvar entityName] ++
        [entityInterface (filter notKey attrlist)
@@ -121,7 +123,8 @@ tuple2Entity erdname (Entity entityName attrlist) relationships allEntities =
                  (zip (filter notKey attrlist) [1..]) ++
             (map (\ (name, varId) -> CPVar(varId,lowerFirst name))
                  (zip manyToOneEntities [1..])) ++
-            (map (\ (name, varId) -> CPVar(varId,lowerFirst $ name++"s"))
+            (map (\ ((ename,erel), varId) ->
+                         CPVar (varId, lowerFirst $ erel ++ ename ++ "s"))
                  (zip manyToManyEntities [1..]))
            )
         ]
@@ -129,7 +132,7 @@ tuple2Entity erdname (Entity entityName attrlist) relationships allEntities =
       (tupleExpr $
          (foldr (\ (Attribute aname domain _ _) expr ->
                    case domain of
-                     (KeyDom rel) ->
+                     KeyDom rel ->
                        applyF (model erdname, "set" ++ entityName ++ aname)
                               [expr,
                                applyF (model erdname, lowerFirst rel ++ "Key")
@@ -139,14 +142,15 @@ tuple2Entity erdname (Entity entityName attrlist) relationships allEntities =
                 
                  (CVar (0, lowerFirst $ entityName++"ToUpdate"))
                  attrlist )
-            : (map (\e -> cvar (lowerFirst $ e ++ "s")) manyToManyEntities))]
+            : (map (\ (ename,erel) -> cvar (lowerFirst $ erel ++ ename ++ "s"))
+                   manyToManyEntities))]
 
 
 entity2Tuple :: ViewGenerator
 entity2Tuple erdname (Entity entityName attrlist) relationships allEntities =
   let
     manyToManyEntities = manyToMany allEntities (Entity entityName attrlist)
-    manyToOneEntities = manyToOne (Entity entityName attrlist) relationships
+    manyToOneEntities  = manyToOne (Entity entityName attrlist) relationships
   in
     stCmtFunc
     ("Transformation from entity type "++entityName++" to a tuple\n"++
@@ -159,12 +163,12 @@ entity2Tuple erdname (Entity entityName attrlist) relationships allEntities =
       (
         (map ctvar manyToOneEntities) ++
         
-        [(
-          if null manyToManyEntities
-          then baseType (model erdname, entityName)
-          else
-            tupleType ([ctvar entityName] ++
-                       map (\name -> listType (ctvar name)) manyToManyEntities)
+        [(if null manyToManyEntities
+            then baseType (model erdname, entityName)
+            else tupleType
+                  ([ctvar entityName] ++
+                   map (\ (name,_) -> listType (ctvar name))
+                       manyToManyEntities)
         )]
       )
     )
@@ -176,7 +180,8 @@ entity2Tuple erdname (Entity entityName attrlist) relationships allEntities =
          tuplePattern
           (
             CPVar (1, lowerFirst entityName) :
-            (map (\ (name, varId) -> CPVar(varId,(lowerFirst $ name++"s")))
+            (map (\ ((ename,erel), varId) ->
+                     CPVar (varId, lowerFirst $ erel ++ ename ++ "s"))
                  (zip manyToManyEntities [1..]))
           )
         ]
@@ -187,7 +192,8 @@ entity2Tuple erdname (Entity entityName attrlist) relationships allEntities =
                             [cvar (lowerFirst entityName)])
                   (filter notKey attrlist) ++
              map (\e -> cvar (lowerFirst e)) manyToOneEntities ++
-             map (\e -> cvar (lowerFirst $ e ++ "s")) manyToManyEntities)
+             map (\ (ename,erel) -> cvar (lowerFirst $ erel ++ ename ++ "s"))
+                 manyToManyEntities)
         )]
 
 wuiType :: ViewGenerator
@@ -195,6 +201,9 @@ wuiType _ (Entity entityName attrlist) relationships allEntities =
   let
     manyToManyEntities = manyToMany allEntities (Entity entityName attrlist)
     manyToOneEntities  = manyToOne (Entity entityName attrlist) relationships
+    possibleVars vart =
+      map (\ (ename,erel) -> vart (1, lowerFirst $ erel ++ ename ++ "List"))
+          (map (\n -> (n,"")) manyToOneEntities ++ manyToManyEntities)
   in
     stCmtFunc 
     ("WUI Type for editing or creating "++entityName++" entities.\n"++
@@ -207,23 +216,21 @@ wuiType _ (Entity entityName attrlist) relationships allEntities =
         then ctvar entityName
         else
           tupleType ([ctvar entityName] ++
-                     map (\name -> listType (ctvar name)) manyToManyEntities)
+                     map (\ (name,_) -> listType (ctvar name))
+                         manyToManyEntities)
       ])
       (
         [ctvar entityName] ++
-        (map (\e -> ctvar e) (manyToOneEntities)) ++ -- related values
-        --(map (\e -> listType (ctvar e)) manyToManyEntities) ++ -- related values
-        (map (\e -> listType (ctvar e))
-             (manyToOneEntities ++ manyToManyEntities))-- possible values
+        (map ctvar manyToOneEntities) ++ -- related values
+        (map (listType . ctvar) -- possible values
+             (manyToOneEntities ++ map fst manyToManyEntities))
       )
     )
     [simpleRule
       (
         [CPVar (1, lowerFirst entityName)] ++
         (map (\e -> CPVar (1, lowerFirst e)) manyToOneEntities) ++ -- related values
-        --(map (\e -> CPVar (1, lowerFirst $ e++"s")) (manyToManyEntities)) ++ -- related values
-        (map (\e -> CPVar (1, lowerFirst $ e++"List"))
-             (manyToOneEntities ++ manyToManyEntities))
+        (possibleVars CPVar)
       )
       (applyF (wuiModule "transformWSpec") [
             tupleExpr
@@ -234,8 +241,7 @@ wuiType _ (Entity entityName attrlist) relationships allEntities =
                     (map (\e -> CVar (1, lowerFirst e)) (manyToOneEntities))
             ],
             applyF (viewModuleName entityName, "w"++entityName)
-                   (map (\e -> CVar (1, lowerFirst $ e ++ "List"))
-                        (manyToOneEntities ++ manyToManyEntities))
+                   (possibleVars CVar)
           ]
         )]
 
@@ -272,6 +278,9 @@ showView erdname (Entity entityName attrlist) relationships allEntities =
      manyToOneEntities  = manyToOne (Entity entityName attrlist) relationships
      infovar            = (0, "_")
      evar               = (1, lowerFirst entityName)
+     mmRelatedVars vart =
+       map (\ ((ename,erel), i) -> vart (i, lowerFirst $ erel ++ ename ++ "s"))
+           (zip manyToManyEntities [(length manyToOneEntities + 3) ..])
   in viewFunction 
       ("Supplies a view to show the details of a "++entityName++".\n")
       entityName "show" 2
@@ -280,15 +289,14 @@ showView erdname (Entity entityName attrlist) relationships allEntities =
        foldr CFuncType viewBlockType (
           [baseType (model erdname,entityName)] ++
           (map ctvar manyToOneEntities) ++ -- defaults for n:1
-          (map (\name -> listType (ctvar name)) manyToManyEntities))
+          (map (\ (name,_) -> listType (ctvar name)) manyToManyEntities))
       )
       [simpleRule
         ( -- parameters
           [CPVar infovar, CPVar evar] ++
           (map (\ (name, varId) -> CPVar (varId,"related"++name))
                (zip manyToOneEntities [3..])) ++
-          (map (\ (name, varId) -> CPVar (varId, lowerFirst name ++ "s"))
-               (zip manyToManyEntities [(length manyToOneEntities + 3)..]))
+          (mmRelatedVars CPVar)
         )
         (applyF (pre "++")
               [applyF (entitiesToHtmlModule erdname,
@@ -296,9 +304,7 @@ showView erdname (Entity entityName attrlist) relationships allEntities =
                   ([CVar evar] ++
                    map (\ (name, varId) -> CVar (varId,"related"++name))
                        (zip manyToOneEntities [3..]) ++
-                   map (\ (name, varId) -> CVar (varId, lowerFirst name++"s"))
-                       (zip manyToManyEntities
-                            [(length manyToOneEntities + 3)..])
+                   mmRelatedVars CVar
                   ),
                list2ac [applyF hrefButtonName
                          [applyF (spiceyModule,"listRoute") [CVar evar],
@@ -397,8 +403,8 @@ viewFunction description entityName viewType arity functionType rules =
   stCmtFunc description (viewFunctionName entityName viewType) arity
             Public functionType rules
   
-entityInterface :: [Attribute] -> [String] -> [String] -> CTypeExpr
+entityInterface :: [Attribute] -> [String] -> [(String,String)] -> CTypeExpr
 entityInterface attrlist manyToOne manyToMany = 
   tupleType (map attrType attrlist ++
              map ctvar manyToOne ++
-             map (\e -> listType (ctvar e)) manyToMany)
+             map (\ (e,_) -> listType (ctvar e)) manyToMany)
