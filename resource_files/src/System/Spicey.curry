@@ -126,9 +126,8 @@ nextInProcessOr controller arg = do
 --- specified in the controller URL (of the form "entity/delete/key/...").
 --- The yes/no answers are references derived from the controller URL
 --- where the second argument is replaced by "destroy"/"show".
+--- @param sinfo - information about the current user session
 --- @param question - a question asked
---- @param yescontroller - the controller used if the answer is "yes"
---- @param nocontroller  - the controller used if the answer is "no"
 confirmDeletionPage :: UserSessionInfo -> String -> Controller
 confirmDeletionPage _ question = do
   (entity,ctrlargs) <- getControllerURL

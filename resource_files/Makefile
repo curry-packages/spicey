@@ -71,6 +71,8 @@ deploy: checkdeploy
 	# recreate directory for storing local session data:
 	/bin/rm -rf $(WEBSERVERDIR)/sessiondata
 	mkdir -p $(WEBSERVERDIR)/sessiondata
+	# restrict access to session data:
+	cp data/htaccess $(WEBSERVERDIR)/sessiondata/.htaccess
 	chmod 700 $(WEBSERVERDIR)/sessiondata
 
 $(WEBSERVERDIR)/spicey.cgi: src/*.curry src/*/*.curry

@@ -23,7 +23,7 @@ import Crypto.Hash
 getUserHash :: String -> String -> IO String
 getUserHash username userpassword = do
   let systemkey = "3spicey5" -- change this key for every spicey instance
-  getHash (username++userpassword++systemkey)
+  getHash (username ++ userpassword ++ systemkey)
 
 --- Returns a random password (a hexadecimal string) of a particular length.
 --- @param length - length of the desired password

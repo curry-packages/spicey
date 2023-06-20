@@ -22,7 +22,7 @@ dispatcher = do
                 maybe displayUrlError getController
 
   page <- getPage controller
-  saveLastUrl (url ++ concatMap ("/"++) ctrlparams)
+  saveLastUrl (url ++ concatMap ("/" ++) ctrlparams)
   return page
 
 --- Main function: call the dispatcher

@@ -28,6 +28,11 @@ The directory structure of this package is as follows
   This directory contains the implementation of the data model, i.e.,
   it contains the Curry module `<MODEL>.curry` implementing the access
   to the database which are generated from the ER description.
+  Note that this module defines also the location of the
+  **actual database** containing all data (see definition of `sqliteDBFile`).
+  This definition should be adapted to the actual deployment of the
+  generated system.
+
   In addition to the Curry program, this directory also contains
   the Curry file of the original ER description (file `<MODEL>_ERD.curry`),
   the term files of the transformed ER description (`<MODEL>_ERDT.term`),
