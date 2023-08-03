@@ -47,6 +47,7 @@ spiceyStructure :: String -> DirTree
 spiceyStructure pkgname = 
   Directory "." [
     ResourceFile NoExec "README.md",
+    ResourceFile NoExec "LICENSE",
     ResourcePatchFile NoExec "package.json" (replacePackageName pkgname),
     ResourcePatchFile NoExec "Makefile" patchMakeFile,
     Directory "src" [
