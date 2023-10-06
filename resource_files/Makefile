@@ -18,12 +18,6 @@ CPM := $(CURRYBIN)/cypm
 # Executable of the curry2cgi:
 CURRY2CGI := $(shell which curry2cgi)
 
-# The root directory of the sources of the Spicey application:
-SRCDIR := $(CURDIR)/src
-
-# The load path for the Spicey application:
-export CURRYPATH := $(SRCDIR):$(SRCDIR)/Model
-
 ############################################################################
 
 .PHONY: all
