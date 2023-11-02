@@ -1,13 +1,13 @@
 {
     "name": "spicey",
-    "version": "4.1.0",
+    "version": "4.2.0",
     "author": "Michael Hanus <mh@informatik.uni-kiel.de>",
     "synopsis": "A web application framework for Curry",
     "category": [ "Web", "Database" ],
     "license": "BSD-3-Clause",
     "licenseFile": "LICENSE",
     "dependencies": {
-        "base"          : ">= 3.0.0, < 4.0.0",
+        "base"          : ">= 3.2.0, < 4.0.0",
         "abstract-curry": ">= 3.0.0, < 4.0.0",
         "cdbi"          : ">= 3.0.0, < 4.0.0",
         "directory"     : ">= 3.0.0, < 4.0.0",

@@ -8,13 +8,14 @@ module System.Processes
   , nextControllerRefInProcessOrForUrl
   ) where
 
-import Control.AllValues    ( getOneValue )
+import Control.Search.AllValues ( getOneValue )
 import HTML.Base
 import HTML.Session
 
-import Config.RoutesData    ( ControllerReference )
-import Config.UserProcesses ( ControllerResult, Processes(..), availableProcesses )
-import System.Routes        ( getControllerReference )
+import Config.RoutesData        ( ControllerReference )
+import Config.UserProcesses     ( ControllerResult, Processes(..)
+                                , availableProcesses )
+import System.Routes            ( getControllerReference )
 
 --------------------------------------------------------------------------
 -- A operations on the datatype for process systems.
