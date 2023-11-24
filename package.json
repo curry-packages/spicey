@@ -30,7 +30,7 @@
         "main": "main.tex"
     },
     "source": {
-        "git": "https://git.ps.informatik.uni-kiel.de/curry-packages/spicey.git",
+        "git": "https://github.com/curry-packages/spicey.git",
         "tag": "$version"
     }
 }
