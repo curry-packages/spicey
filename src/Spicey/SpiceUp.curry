@@ -21,7 +21,7 @@ import Spicey.Scaffolding
 systemBanner :: String
 systemBanner =
   let bannerText = "Spicey Web Framework (Version " ++ packageVersion ++
-                   " of 19/03/24)"
+                   " of 25/03/24)"
       bannerLine = take (length bannerText) (repeat '-')
    in bannerLine ++ "\n" ++ bannerText ++ "\n" ++ bannerLine
 

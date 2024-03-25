@@ -38,6 +38,7 @@ import Config.UserProcesses
 import System.Routes
 import System.Processes
 import System.Authentication
+import System.SessionInfo    ( UserSessionInfo )
 
 --------------------------------------------------------------------------
 --- A `ViewBlock` can be turned into a representation which can be displayed
