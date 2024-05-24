@@ -1,6 +1,6 @@
 {
     "name": "spicey",
-    "version": "4.2.0",
+    "version": "5.0.0",
     "author": "Michael Hanus <mh@informatik.uni-kiel.de>",
     "synopsis": "A web application framework for Curry",
     "category": [ "Web", "Database" ],
@@ -8,10 +8,10 @@
     "licenseFile": "LICENSE",
     "dependencies": {
         "base"          : ">= 3.2.0, < 4.0.0",
-        "abstract-curry": ">= 3.0.0, < 4.0.0",
+        "abstract-curry": ">= 4.0.0, < 5.0.0",
         "cdbi"          : ">= 3.0.0, < 4.0.0",
         "directory"     : ">= 3.0.0, < 4.0.0",
-        "ertools"       : ">= 3.0.0, < 4.0.0",
+        "ertools"       : ">= 4.0.0, < 5.0.0",
         "filepath"      : ">= 3.0.0, < 4.0.0",
         "process"       : ">= 3.0.0, < 4.0.0",
         "time"          : ">= 3.0.0, < 4.0.0"

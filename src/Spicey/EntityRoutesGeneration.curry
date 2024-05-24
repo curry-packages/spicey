@@ -32,7 +32,7 @@ controllerInstDecl :: String -> Entity -> CInstanceDecl
 controllerInstDecl erdname (Entity entityName _) =
   CInstance (spiceyModule,"EntityController")
     (CContext [])
-    entityType
+    [entityType]
     [stFunc (spiceyModule,"controllerOnKey") 1 Private
        (stringType ~> (entityType ~> controllerType) ~> controllerType)
        [simpleRule [CPVar (2,"s")]
