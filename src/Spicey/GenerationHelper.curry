@@ -210,7 +210,7 @@ viewBlockType = listType (baseType (html "BaseHtml"))
 
 -- Attach the type class `HTML` with type variable to a type expression.
 withHTMLContext :: CTypeExpr -> CQualTypeExpr
-withHTMLContext = CQualType (CContext [(html "HTML", htmlTVar)])
+withHTMLContext = CQualType (CContext [(html "HTML", [htmlTVar])])
 
 -- The type variable `h` used to `HTML` types in type expressions.
 htmlTVar :: CTypeExpr
