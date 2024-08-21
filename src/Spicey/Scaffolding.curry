@@ -51,7 +51,7 @@ createViews _ (ERD name entities relationship) path _ =
   saveView :: String -> [Entity] -> [Relationship] -> Entity -> IO ()
   saveView erdname allEntities relationships (Entity ename attrlist) = do
     putStrLn ("Saving view operations in 'View."++ename++".curry'...")
-    writeFile (path </> ename++".curry")
+    writeFile (path </> ename ++ ".curry")
               (showCProg (generateViewsForEntity erdname allEntities
                             (Entity ename attrlist) relationships))
 
