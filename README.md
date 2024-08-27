@@ -1,5 +1,5 @@
-The Spicey Web Application Framework
-====================================
+Spicey: An ER-based Web Framework for Curry
+===========================================
 
 Description
 -----------
@@ -21,6 +21,7 @@ cannot lead to an inconsistent state of the database.
 
 Example
 -------
+
 As an example, we consider the implementation of a web log system with Spicey.
 A "blog" consists of "Entry" articles
 having title, text, author, and date as attributes, and
