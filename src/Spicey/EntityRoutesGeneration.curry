@@ -30,8 +30,7 @@ generateRoutesForEntity erdname allEntities =
 -- Generates the instance declaration for a controller.
 controllerInstDecl :: String -> Entity -> CInstanceDecl
 controllerInstDecl erdname (Entity entityName _) =
-  CInstance (spiceyModule,"EntityController")
-    (CContext [])
+  simpleInstanceDecl (spiceyModule,"EntityController")
     entityType
     [stFunc (spiceyModule,"controllerOnKey") 1 Private
        (stringType ~> (entityType ~> controllerType) ~> controllerType)
