@@ -64,9 +64,16 @@ Apart from a
 there are documents where one can
 find more details about Spicey and its implementation.
 
-* [An ER-based Framework for Declarative Web Programming](http://www.informatik.uni-kiel.de/~mh/papers/PADL10.html) (PADL 2010): This conference paper introduces the basic ideas of Spicey and its implementation.
-* [An ER-based Framework for Declarative Web Programming](http://www.informatik.uni-kiel.de/~mh/papers/TPLP14.html) (TPLP 2012): This is an expanded version of the previous paper. It provides some more details about Spicey and its implementation.
-* [Master Thesis](http://www.informatik.uni-kiel.de/~mh/lehre/abschlussarbeiten/msc/koschnicke.pdf) (in German): This is a master thesis on Spicey, written by Sven Koschnicke, the initial developer of Spicey. The thesis contains details about the design and implementation of Spicey.
+* [An ER-based Framework for Declarative Web Programming](http://dx.doi.org/10.1007/978-3-642-11503-5_18) (PADL 2010):
+  This conference paper introduces the basic ideas of Spicey and
+  its implementation.
+* [An ER-based Framework for Declarative Web Programming](http://dx.doi.org/10.1017/S1471068412000385) (TPLP 2012):
+  This is an expanded version of the previous paper. It provides some
+  more details about Spicey and its implementation.
+* [Master Thesis](https://www.michaelhanus.de/lehre/abschlussarbeiten/msc/koschnicke.pdf) (in German):
+  This is a master thesis on Spicey, written by Sven Koschnicke, the initial
+  developer of Spicey. The thesis contains details about the design and
+  implementation of Spicey.
 
 
 Installation
